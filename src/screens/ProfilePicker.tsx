@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import type { Desk, Role, TabKey } from "../types.ts";
-import { CAPS, ROLE_ORDER, TAB_KEYS } from "../data.ts";
+import { TAB_KEYS } from "../data.ts";
+import { fetchRolesAndCaps } from "../lib/backend.ts";
 import { BackButton } from "../components/parts.tsx";
 
 export function ProfilePicker({
@@ -11,6 +13,17 @@ export function ProfilePicker({
   onBack: () => void;
   onPick: (role: Role) => void;
 }) {
+  const [rolesAndCaps, setRolesAndCaps] = useState<{ roleOrder: Role[]; caps: Record<Role, TabKey[]> } | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchRolesAndCaps()
+      .then((r) => { if (!cancelled) setRolesAndCaps(r); })
+      .catch((err: unknown) => { if (!cancelled) setLoadError(err instanceof Error ? err.message : String(err)); });
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <div style={{ flex: 1, padding: "var(--space-8) var(--space-6)", maxWidth: 1100, width: "100%", boxSizing: "border-box", margin: "0 auto" }}>
       <BackButton label={D.back} onClick={onBack} />
@@ -18,18 +31,22 @@ export function ProfilePicker({
       <p style={{ margin: "0 0 var(--space-6)", maxWidth: "40em", fontSize: 16, lineHeight: 1.6, color: "var(--color-neutral-700)" }}>
         {D.chooseProfileNote}
       </p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: "var(--space-4)" }}>
-        {ROLE_ORDER.map((key, i) => (
-          <div key={key} className="card elev-sm" style={{ cursor: "pointer" }} role="button" tabIndex={0} onClick={() => onPick(key)}>
-            <div className="card-kicker">{D.roleLabel}</div>
-            <div className="card-title">{D.roles[i] ?? key}</div>
-            <div className="card-body">{D.roleNotes[i] ?? ""}</div>
-            <div className="card-meta">
-              {(CAPS[key] ?? []).map((k: TabKey) => D.tabs[TAB_KEYS.indexOf(k)]).filter(Boolean).join(" · ")}
+      {loadError && <div className="tag tag-accent">Couldn't load profiles: {loadError}</div>}
+      {!loadError && !rolesAndCaps && <div className="tag tag-neutral">Loading…</div>}
+      {rolesAndCaps && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: "var(--space-4)" }}>
+          {rolesAndCaps.roleOrder.map((key, i) => (
+            <div key={key} className="card elev-sm" style={{ cursor: "pointer" }} role="button" tabIndex={0} onClick={() => onPick(key)}>
+              <div className="card-kicker">{D.roleLabel}</div>
+              <div className="card-title">{D.roles[i] ?? key}</div>
+              <div className="card-body">{D.roleNotes[i] ?? ""}</div>
+              <div className="card-meta">
+                {(rolesAndCaps.caps[key] ?? []).map((k: TabKey) => D.tabs[TAB_KEYS.indexOf(k)]).filter(Boolean).join(" · ")}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

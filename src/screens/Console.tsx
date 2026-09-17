@@ -1,37 +1,11 @@
-import type { Desk, Locale, Role, TabKey } from "../types.ts";
+import { useEffect, useState } from "react";
+import type { Desk, LedgerRow, Locale, Role, TabKey } from "../types.ts";
 import { LOCALES } from "../i18n.ts";
-import {
-  AGENTS,
-  BATCHES,
-  CAPS,
-  FX,
-  GRANTS,
-  MANDATES,
-  MEMBERS,
-  MERCHANTS,
-  POSITIONS,
-  QUEUE,
-  RANGE_SCALE,
-  ROLE_ORDER,
-  ROLE_SCOPE,
-  ROWS,
-  TAB_KEYS,
-  fmtNum,
-} from "../data.ts";
+import { TAB_KEYS, fmtNum } from "../data.ts";
+import { fetchConsoleData, type ConsoleData } from "../lib/backend.ts";
 import { BackButton, BarChart, FxTable, KpiTile, LedgerTable, PayRusLogo, PositionCard, QueueCard, SegGroup } from "../components/parts.tsx";
 
 const STATE_KEYS = ["All", "Settled", "Pending", "Failed"] as const;
-
-const VIEW_ROWS: Record<TabKey, typeof ROWS> = {
-  overview: ROWS,
-  transactions: ROWS,
-  payouts: BATCHES,
-  merchants: MERCHANTS,
-  agents: AGENTS,
-  mandates: MANDATES,
-  grants: GRANTS,
-  members: MEMBERS,
-};
 
 export function Console({
   D,
@@ -64,32 +38,58 @@ export function Console({
   onSignOut: () => void;
   onLogoClick: () => void;
 }) {
-  const roleIx = ROLE_ORDER.indexOf(profile);
-  const scope = ROLE_SCOPE[profile];
-  const pos = POSITIONS[profile];
-  const caps = CAPS[profile];
+  const [data, setData] = useState<ConsoleData | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchConsoleData()
+      .then((d) => { if (!cancelled) setData(d); })
+      .catch((err: unknown) => { if (!cancelled) setLoadError(err instanceof Error ? err.message : String(err)); });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (loadError) {
+    return (
+      <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center", padding: "var(--space-8)" }}>
+        <div className="tag tag-accent">Couldn't load console data: {loadError}</div>
+      </div>
+    );
+  }
+  if (!data) {
+    return (
+      <div style={{ display: "flex", flex: 1, alignItems: "center", justifyContent: "center", padding: "var(--space-8)" }}>
+        <div className="tag tag-neutral">Loading…</div>
+      </div>
+    );
+  }
+
+  const roleIx = data.roleOrder.indexOf(profile);
+  const scope = data.roleScope[profile] ?? { sees: [], kpis: [], bars: [] };
+  const pos = data.positions[profile];
+  const caps = data.caps[profile] ?? [];
   const tabKey = TAB_KEYS[tabIx];
   const isOverview = tabKey === "overview";
   const kpiText = D.kpiText[profile];
 
-  const views: Record<TabKey, { headline: string | null; caption: string | null; ranged: boolean; cols: string[]; rows: typeof ROWS; limit?: number }> = {
-    overview: { headline: null, caption: D.tableTitles[roleIx] || D.tableTitle, ranged: true, cols: D.cols, rows: VIEW_ROWS.overview, limit: 8 },
-    transactions: { headline: D.ledger, caption: null, ranged: false, cols: D.cols, rows: VIEW_ROWS.transactions },
-    payouts: { headline: D.batches, caption: null, ranged: false, cols: D.colsPayouts, rows: VIEW_ROWS.payouts },
-    merchants: { headline: D.merchantRoster, caption: null, ranged: false, cols: D.colsMerchants, rows: VIEW_ROWS.merchants },
-    agents: { headline: D.agentRoster, caption: null, ranged: false, cols: D.colsAgents, rows: VIEW_ROWS.agents },
-    mandates: { headline: D.mandateRoster, caption: null, ranged: false, cols: D.colsMandates, rows: VIEW_ROWS.mandates },
-    grants: { headline: D.grantRoster, caption: null, ranged: false, cols: D.colsGrants, rows: VIEW_ROWS.grants },
-    members: { headline: D.memberRoster, caption: null, ranged: false, cols: D.colsMembers, rows: VIEW_ROWS.members },
+  const views: Record<TabKey, { headline: string | null; caption: string | null; ranged: boolean; cols: string[]; rows: LedgerRow[]; limit?: number }> = {
+    overview: { headline: null, caption: D.tableTitles[roleIx] || D.tableTitle, ranged: true, cols: D.cols, rows: data.viewRows.overview, limit: 8 },
+    transactions: { headline: D.ledger, caption: null, ranged: false, cols: D.cols, rows: data.viewRows.transactions },
+    payouts: { headline: D.batches, caption: null, ranged: false, cols: D.colsPayouts, rows: data.viewRows.payouts },
+    merchants: { headline: D.merchantRoster, caption: null, ranged: false, cols: D.colsMerchants, rows: data.viewRows.merchants },
+    agents: { headline: D.agentRoster, caption: null, ranged: false, cols: D.colsAgents, rows: data.viewRows.agents },
+    mandates: { headline: D.mandateRoster, caption: null, ranged: false, cols: D.colsMandates, rows: data.viewRows.mandates },
+    grants: { headline: D.grantRoster, caption: null, ranged: false, cols: D.colsGrants, rows: data.viewRows.grants },
+    members: { headline: D.memberRoster, caption: null, ranged: false, cols: D.colsMembers, rows: data.viewRows.members },
   };
   const view = views[tabKey];
 
   const activeState = STATE_KEYS[filterIx];
-  const scale = RANGE_SCALE[rangeIx] ?? 1;
-  const mine = (r: (typeof ROWS)[number]) => !r.who || scope.sees.includes(r.who);
+  const scale = data.rangeScale[rangeIx] ?? 1;
+  const mine = (r: LedgerRow) => !r.who || scope.sees.includes(r.who);
   const scoped = view.rows.filter(mine).slice(0, view.limit ?? Infinity);
   const rows = scoped.filter((r) => activeState === "All" || r.state === activeState);
-  const queueItems = QUEUE.map((q, i) => ({ ...q, i })).filter((q) => q.roles.includes(profile));
+  const queueItems = data.queue.filter((q) => q.roles.includes(profile));
 
   function goTab(i: number) {
     if (!caps.includes(TAB_KEYS[i])) return;
@@ -244,7 +244,7 @@ export function Console({
               </div>
             </div>
           )}
-          <FxTable title={D.fxTitle} rows={FX.map((f, i) => ({ ...f, note: D.fxNotes[i] }))} />
+          <FxTable title={D.fxTitle} rows={data.fx.map((f, i) => ({ ...f, note: D.fxNotes[i] }))} />
         </div>
       </div>
     </div>
