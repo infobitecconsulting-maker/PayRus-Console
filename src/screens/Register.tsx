@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Desk, Locale } from "../types.ts";
-import { LOCALES } from "../i18n.ts";
-import { BackButton, PayRusLogo, SegGroup } from "../components/parts.tsx";
+import { BackButton, LocaleMenu, PayRusLogo } from "../components/parts.tsx";
 import { supabase } from "../lib/supabase-client.ts";
 import { OAUTH_PROVIDERS, signInWithOAuthProvider, type OAuthProviderId } from "../lib/supabase-providers.ts";
 import { COUNTRY_OPTIONS, callingCodeForCountry } from "../lib/geo.ts";
@@ -186,7 +185,7 @@ export function Register({
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "var(--space-4) var(--space-6)" }}>
         <BackButton label={D.back} onClick={() => (step === "checkEmail" ? setStep("details") : onBack())} />
-        <SegGroup label={D.language} value={locale} onChange={setLocale} options={LOCALES.map((l) => ({ value: l.code, label: l.flag }))} />
+        <LocaleMenu value={locale} onChange={setLocale} variant="auth" />
       </div>
 
       {step === "details" && (

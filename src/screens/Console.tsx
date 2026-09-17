@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import type { Desk, LedgerRow, Locale, Role, TabKey } from "../types.ts";
-import { LOCALES } from "../i18n.ts";
 import { TAB_KEYS, fmtNum } from "../data.ts";
 import { fetchConsoleData, type ConsoleData } from "../lib/backend.ts";
-import { BackButton, BarChart, FxTable, KpiTile, LedgerTable, PayRusLogo, PositionCard, QueueCard, SegGroup } from "../components/parts.tsx";
+import { BackButton, BarChart, FxTable, KpiTile, LedgerTable, LocaleMenu, PayRusLogo, PositionCard, QueueCard, SegGroup } from "../components/parts.tsx";
 
 const STATE_KEYS = ["All", "Settled", "Pending", "Failed"] as const;
 
@@ -122,7 +121,7 @@ export function Console({
           })}
         </div>
         <div className="pr-ids">
-          <SegGroup label={D.language} value={locale} onChange={setLocale} options={LOCALES.map((l) => ({ value: l.code, label: l.flag }))} />
+          <LocaleMenu value={locale} onChange={setLocale} variant="console" />
           <span className="tag tag-neutral" style={{ whiteSpace: "nowrap" }}>
             {D.pilotClient}
           </span>

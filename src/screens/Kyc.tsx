@@ -1,7 +1,6 @@
 import { useState } from "react";
 import type { Desk, Locale, Role } from "../types.ts";
-import { LOCALES } from "../i18n.ts";
-import { BackButton, PayRusLogo, SegGroup } from "../components/parts.tsx";
+import { BackButton, LocaleMenu, PayRusLogo } from "../components/parts.tsx";
 import { uploadKycFile } from "../lib/kycUpload.ts";
 import { upsertUserRole } from "../lib/identity.ts";
 
@@ -115,7 +114,7 @@ export function Kyc({
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "var(--space-4) var(--space-6)" }}>
         <BackButton label={D.back} onClick={onBack} />
-        <SegGroup label={D.language} value={locale} onChange={setLocale} options={LOCALES.map((l) => ({ value: l.code, label: l.flag }))} />
+        <LocaleMenu value={locale} onChange={setLocale} variant="auth" />
       </div>
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-6)", padding: "0 var(--space-6) var(--space-8)", maxWidth: 480, width: "100%", boxSizing: "border-box", margin: "0 auto" }}>

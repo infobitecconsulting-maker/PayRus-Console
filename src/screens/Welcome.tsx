@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Desk, Locale } from "../types.ts";
-import { LOCALES } from "../i18n.ts";
-import { BackButton, PayRusLogo, SegGroup } from "../components/parts.tsx";
+import { BackButton, LocaleMenu, PayRusLogo } from "../components/parts.tsx";
 import { supabase } from "../lib/supabase-client.ts";
 import { OAUTH_PROVIDERS, signInWithOAuthProvider, type OAuthProviderId } from "../lib/supabase-providers.ts";
 
@@ -212,7 +211,7 @@ export function Welcome({
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "var(--space-4) var(--space-6)" }}>
         <BackButton label={D.back} onClick={onBack} />
-        <SegGroup label={D.language} value={locale} onChange={setLocale} options={LOCALES.map((l) => ({ value: l.code, label: l.flag }))} />
+        <LocaleMenu value={locale} onChange={setLocale} variant="auth" />
       </div>
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-6)", padding: "var(--space-4) var(--space-6) var(--space-8)", maxWidth: 420, width: "100%", boxSizing: "border-box", margin: "0 auto" }}>

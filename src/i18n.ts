@@ -982,10 +982,12 @@ export const DESK: Record<Locale, Desk> = {
   },
 };
 
+// Same flag emoji + native-name pairing as App/src/i18n.ts:SUPPORTED_LOCALES,
+// so the two apps' language pickers show identical options.
 export const LOCALES: { code: Locale; label: string; flag: string }[] = [
-  { code: "en", label: "English", flag: "EN" },
-  { code: "fr", label: "Français", flag: "FR" },
-  { code: "pt", label: "Português", flag: "PT" },
-  { code: "es", label: "Español", flag: "ES" },
+  { code: "en", label: "English", flag: "🇬🇧" },
+  { code: "fr", label: "Français", flag: "🇫🇷" },
+  { code: "pt", label: "Português", flag: "🇵🇹" },
+  { code: "es", label: "Español", flag: "🇪🇸" },
 ];
 

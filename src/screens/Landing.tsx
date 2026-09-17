@@ -1,6 +1,5 @@
 import type { Desk, Locale } from "../types.ts";
-import { LOCALES } from "../i18n.ts";
-import { PayRusLogo, SegGroup } from "../components/parts.tsx";
+import { LocaleMenu, PayRusLogo } from "../components/parts.tsx";
 
 // Same --auth-* visual language as Welcome/Onboarding (borrowed from App/'s
 // login module) — this is the console's public entry point, so it should
@@ -34,7 +33,7 @@ export function Landing({
         <div style={{ display: "flex", alignItems: "center", gap: 9, marginRight: "auto" }}>
           <PayRusLogo size={120} onClick={onLogoClick} alt={D.logoAlt} homeLabel={D.logoHomeLabel} />
         </div>
-        <SegGroup label={D.language} value={locale} onChange={setLocale} options={LOCALES.map((l) => ({ value: l.code, label: l.flag }))} />
+        <LocaleMenu value={locale} onChange={setLocale} variant="auth" />
         <button
           type="button"
           onClick={onSignIn}

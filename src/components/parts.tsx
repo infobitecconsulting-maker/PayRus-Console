@@ -1,5 +1,7 @@
-import type { LedgerRow, Position, QueueItem, QueueText } from "../types.ts";
+import { useEffect, useRef, useState } from "react";
+import type { LedgerRow, Locale, Position, QueueItem, QueueText } from "../types.ts";
 import { STATE_CLS } from "../data.ts";
+import { LOCALES } from "../i18n.ts";
 
 export function BackButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
@@ -77,6 +79,114 @@ export function SegGroup<T extends string | number>({
           <span>{opt.label}</span>
         </label>
       ))}
+    </div>
+  );
+}
+
+// Mirrors App/src/components/ui/locale-switcher.tsx's look and interaction:
+// a small trigger (globe icon + current flag + native name) that opens a
+// dropdown listing every locale with a checkmark on the active one — instead
+// of SegGroup's always-visible row of options, which is what this replaced
+// on every screen that has a language picker (Landing/Welcome/Register/Kyc/
+// Console). `variant` only changes the trigger's resting style so it blends
+// into each host screen's own chrome — Landing/Welcome/Register/Kyc sit on
+// the `--auth-*` gradient pages, Console sits in the back-office nav bar
+// and already uses the `.btn.btn-ghost` class for its sibling buttons.
+export function LocaleMenu({
+  value,
+  onChange,
+  variant,
+}: {
+  value: Locale;
+  onChange: (l: Locale) => void;
+  variant: "auth" | "console";
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const current = LOCALES.find((l) => l.code === value) ?? LOCALES[0];
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onDocMouseDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={variant === "console" ? "btn btn-ghost" : undefined}
+        style={
+          variant === "auth"
+            ? {
+                display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: 0,
+                cursor: "pointer", fontSize: 13, fontWeight: 700, color: "var(--auth-navy)", padding: "6px 4px",
+              }
+            : { fontSize: 13, gap: 6 }
+        }
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+          <path d="M3 12h18M12 3c2.5 2.4 3.8 5.4 3.8 9s-1.3 6.6-3.8 9c-2.5-2.4-3.8-5.4-3.8-9s1.3-6.6 3.8-9z" stroke="currentColor" strokeWidth="1.6" />
+        </svg>
+        <span>{current.flag}</span>
+        <span>{current.label}</span>
+      </button>
+      {open && (
+        <div
+          role="listbox"
+          style={{
+            position: "absolute", top: "100%", left: 0, marginTop: 6, zIndex: 20, minWidth: 160,
+            background: "#fff", border: "1px solid var(--auth-border, #e4eaf0)", borderRadius: 10,
+            boxShadow: "0 10px 26px rgba(10,42,74,0.14)", overflow: "hidden",
+          }}
+        >
+          {LOCALES.map((l) => {
+            const active = l.code === value;
+            return (
+              <button
+                key={l.code}
+                type="button"
+                role="option"
+                aria-selected={active}
+                onClick={() => {
+                  onChange(l.code);
+                  setOpen(false);
+                }}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", gap: 8,
+                  background: active ? "color-mix(in srgb, var(--auth-navy, #0a2f5c) 8%, transparent)" : "none",
+                  border: 0, padding: "8px 12px", cursor: "pointer", fontSize: 13, textAlign: "left",
+                  color: "var(--auth-navy, #0a2f5c)",
+                }}
+              >
+                <span style={{ width: 14, display: "inline-flex", justifyContent: "center" }}>
+                  {active && (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </span>
+                <span>{l.flag}</span>
+                <span style={{ flex: 1 }}>{l.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
