@@ -2,25 +2,70 @@ import { useEffect, useRef, useState } from "react";
 import type { Locale, Role } from "./types.ts";
 import { DESK } from "./i18n.ts";
 import { supabase } from "./lib/supabase-client.ts";
+import { upsertSupabaseUser, listUserRoles } from "./lib/identity.ts";
 import { Landing } from "./screens/Landing.tsx";
 import { Register } from "./screens/Register.tsx";
 import { Welcome } from "./screens/Welcome.tsx";
 import { ProfilePicker } from "./screens/ProfilePicker.tsx";
+import { Kyc } from "./screens/Kyc.tsx";
 import { Console } from "./screens/Console.tsx";
 
-type Stage = "landing" | "welcome" | "register" | "profile" | "app";
+type Stage = "landing" | "welcome" | "register" | "profile" | "kyc" | "app";
+type AuthSession = { user: { id: string; email?: string; user_metadata?: Record<string, unknown> } } | null;
 
 export default function App() {
   const [stage, setStage] = useState<Stage>("landing");
   const [, setHistory] = useState<Stage[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [ssoError, setSsoError] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [pendingRole, setPendingRole] = useState<Role | null>(null);
   const settledRef = useRef(false);
 
+  const [profile, setProfile] = useState<Role>("Treasury");
+  const [tabIx, setTabIx] = useState(0);
+  const [rangeIx, setRangeIx] = useState(0);
+  const [filterIx, setFilterIx] = useState(0);
+  const [locale, setLocale] = useState<Locale>("en");
+
+  const D = DESK[locale];
+
+  // The single place any successful sign-in (password, magic link, OAuth,
+  // SSO, or a fresh registration) resolves into: create/find the real
+  // Postgres user row, then route based on real role data — straight into
+  // the account if exactly one role already exists (the "into his account"
+  // case), to the profile picker otherwise (0 or 2+ roles). Mirrors
+  // App/src/pages/auth-callback/page.tsx's routeAfterIdentity logic; ops-
+  // console has no dedicated callback route, so this same function is
+  // called both passively (the mount-time effect below, for magic-link/
+  // OAuth/SSO redirects) and explicitly (Welcome/Register's own success
+  // handlers, for password sign-in and fresh sign-up).
+  const resolveIdentityAndRoute = async (session: AuthSession) => {
+    if (!session?.user?.email || settledRef.current) return;
+    settledRef.current = true;
+    setIsAuthenticated(true);
+    try {
+      const meta = session.user.user_metadata ?? {};
+      const name = (typeof meta.full_name === "string" && meta.full_name) || (typeof meta.name === "string" && meta.name) || undefined;
+      const { userId: resolvedUserId } = await upsertSupabaseUser({ supabaseUserId: session.user.id, email: session.user.email, name });
+      setUserId(resolvedUserId);
+      const roles = await listUserRoles(resolvedUserId);
+      if (roles.length === 1) {
+        setProfile(roles[0].role as Role);
+        setTabIx(0);
+        setFilterIx(0);
+        setStage("app");
+      } else {
+        setStage((s) => (s === "landing" || s === "welcome" ? "profile" : s));
+      }
+    } catch {
+      setStage((s) => (s === "landing" || s === "welcome" ? "profile" : s));
+    }
+  };
+
   // The console has no router/callback route to land on after an
-  // OAuth/SSO redirect — this is the single place that resolves a returning
-  // Supabase session, mirroring App/src/pages/auth-callback/page.tsx's logic
-  // but staying in the existing Stage state machine instead of a URL route.
+  // OAuth/SSO/magic-link redirect — this is the single place that resolves
+  // a returning Supabase session on page load.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
@@ -32,16 +77,9 @@ export default function App() {
       return;
     }
 
-    const resolve = (session: unknown) => {
-      if (!session || settledRef.current) return;
-      settledRef.current = true;
-      setIsAuthenticated(true);
-      setStage((s) => (s === "landing" || s === "welcome" ? "profile" : s));
-    };
-
-    void supabase.auth.getSession().then(({ data }) => resolve(data.session));
+    void supabase.auth.getSession().then(({ data }) => resolveIdentityAndRoute(data.session));
     const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_IN") resolve(session);
+      if (event === "SIGNED_IN") void resolveIdentityAndRoute(session);
     });
 
     return () => subscription.subscription.unsubscribe();
@@ -49,14 +87,6 @@ export default function App() {
     // single redirect that may have landed on this page load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const [profile, setProfile] = useState<Role>("Treasury");
-  const [tabIx, setTabIx] = useState(0);
-  const [rangeIx, setRangeIx] = useState(0);
-  const [filterIx, setFilterIx] = useState(0);
-  const [locale, setLocale] = useState<Locale>("en");
-
-  const D = DESK[locale];
 
   function go(next: Stage) {
     setHistory((h) => [...h, stage]);
@@ -76,8 +106,16 @@ export default function App() {
     });
   }
 
+  // Role picked but not yet verified — KYC comes next, not straight into the
+  // dashboard (mirrors App/'s "pick a role, then complete its KYC wizard"
+  // order in src/pages/profile/page.tsx).
   function pickRole(role: Role) {
-    setProfile(role);
+    setPendingRole(role);
+    go("kyc");
+  }
+
+  function completeKyc() {
+    if (pendingRole) setProfile(pendingRole);
     setTabIx(0);
     setFilterIx(0);
     setIsAuthenticated(true);
@@ -86,6 +124,9 @@ export default function App() {
 
   function signOut() {
     setIsAuthenticated(false);
+    setUserId(null);
+    setPendingRole(null);
+    settledRef.current = false;
     setHistory([]);
     setStage("landing");
     setTabIx(0);
@@ -123,10 +164,7 @@ export default function App() {
           locale={locale}
           setLocale={setLocale}
           onBack={goBack}
-          onSignIn={() => {
-            setIsAuthenticated(true);
-            go("profile");
-          }}
+          onSignIn={(session) => void resolveIdentityAndRoute(session)}
           onRegister={() => go("register")}
           onLogoClick={goToLogo}
           ssoError={ssoError}
@@ -139,16 +177,26 @@ export default function App() {
           locale={locale}
           setLocale={setLocale}
           onBack={goBack}
-          onRegistered={() => {
-            setIsAuthenticated(true);
-            go("profile");
-          }}
+          onRegistered={(session) => void resolveIdentityAndRoute(session)}
           onLogoClick={goToLogo}
         />
       )}
 
       {stage === "profile" && (
         <ProfilePicker D={D} onBack={goBack} onPick={pickRole} />
+      )}
+
+      {stage === "kyc" && pendingRole && (
+        <Kyc
+          D={D}
+          locale={locale}
+          setLocale={setLocale}
+          role={pendingRole}
+          userId={userId}
+          onBack={goBack}
+          onComplete={completeKyc}
+          onLogoClick={goToLogo}
+        />
       )}
 
       {stage === "app" && (

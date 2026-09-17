@@ -27,7 +27,7 @@ export function Register({
   locale: Locale;
   setLocale: (l: Locale) => void;
   onBack: () => void;
-  onRegistered: () => void;
+  onRegistered: (session: { user: { id: string; email?: string; user_metadata?: Record<string, unknown> } } | null) => void;
   onLogoClick: () => void;
 }) {
   const R = D.register;
@@ -159,7 +159,7 @@ export function Register({
       }
       if (data.session) {
         // Email confirmation is off — Supabase already signed them in.
-        onRegistered();
+        onRegistered(data.session);
         return;
       }
       setStep("checkEmail");

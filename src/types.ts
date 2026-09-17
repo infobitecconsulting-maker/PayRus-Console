@@ -113,6 +113,22 @@ export interface RegisterCopy {
   backToSignin: string;
 }
 
+// The KYC step inserted between role selection (ProfilePicker) and the
+// dashboard — App/'s equivalent (src/pages/profile/page.tsx's "id"/"selfie"
+// steps) requires the same three uploads before a role activates.
+export interface KycCopy {
+  headline: string;
+  subtitle: string;
+  idFrontLabel: string;
+  idBackLabel: string;
+  selfieLabel: string;
+  uploadPrompt: string;
+  uploading: string;
+  uploaded: string;
+  continueLabel: string;
+  saveFailed: string;
+}
+
 export interface LandingCopy {
   kicker: string;
   title: string;
@@ -206,4 +222,5 @@ export interface Desk {
   fxNotes: string[];
   landing: LandingCopy;
   register: RegisterCopy;
+  kyc: KycCopy;
 }

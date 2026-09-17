@@ -25,7 +25,7 @@ export function Welcome({
   locale: Locale;
   setLocale: (l: Locale) => void;
   onBack: () => void;
-  onSignIn: () => void;
+  onSignIn: (session: { user: { id: string; email?: string; user_metadata?: Record<string, unknown> } } | null) => void;
   onRegister: () => void;
   onLogoClick: () => void;
   ssoError?: string | null;
@@ -74,12 +74,12 @@ export function Welcome({
     setNotice(null);
     setChecking(true);
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
       if (authError) {
         setError(D.signInFailed);
         return;
       }
-      onSignIn();
+      onSignIn(data.session);
     } finally {
       setChecking(false);
     }
@@ -145,14 +145,14 @@ export function Welcome({
     setError(null);
     setPhoneSending(true);
     try {
-      const { error: authError } = await supabase.auth.verifyOtp({
+      const { data, error: authError } = await supabase.auth.verifyOtp({
         phone: phoneNumber.trim(), token: phoneCode.trim(), type: "sms",
       });
       if (authError) {
         setError(authError.message);
         return;
       }
-      onSignIn();
+      onSignIn(data.session);
     } finally {
       setPhoneSending(false);
     }

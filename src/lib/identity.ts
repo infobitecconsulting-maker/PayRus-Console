@@ -1,0 +1,65 @@
+// Thin wrappers around the same RPCs/tables App/src/lib/backend.ts's
+// "Identity" and "User roles" sections use — same Supabase project, same
+// schema (supabase/migrations/0006_app_rpc_functions.sql,
+// 0010_kyc_documents.sql). ops-console is a separate package with no way to
+// import App's TS directly, so these are duplicated rather than shared, same
+// convention already used for geo.ts/address.ts. Until now ops-console only
+// ever called supabase.auth.* (real identity, no real profile/role record) —
+// this is what gives it one, unifying it with App at the data layer, not
+// just the auth layer.
+import { supabase } from "./supabase-client.ts";
+
+export interface UserRole {
+  id: string;
+  userId: string;
+  role: string;
+  kind: "individual" | "organisation";
+  status: "incomplete" | "pending_verification" | "verified";
+  idFrontDocPath: string | null;
+  idBackDocPath: string | null;
+  selfieDocPath: string | null;
+}
+
+function mustHaveData<T>(res: { data: T | null; error: { message: string } | null }, label: string): T {
+  if (res.error) throw new Error(`${label}: ${res.error.message}`);
+  if (res.data === null) throw new Error(`${label}: expected data, got null`);
+  return res.data;
+}
+
+export async function upsertSupabaseUser(args: {
+  supabaseUserId: string;
+  email: string;
+  name?: string;
+}): Promise<{ userId: string; name: string }> {
+  const res = await supabase.rpc("upsert_supabase_user", {
+    p_auth_user_id: args.supabaseUserId, p_email: args.email, p_name: args.name ?? null,
+    p_first_name: null, p_last_name: null,
+  });
+  const row = mustHaveData(res, "upsertSupabaseUser") as Record<string, unknown>;
+  return { userId: row.id as string, name: (row.name as string) ?? args.email };
+}
+
+export async function listUserRoles(userId: string): Promise<UserRole[]> {
+  const res = await supabase.from("user_roles").select("*").eq("user_id", userId);
+  return mustHaveData(res, "listUserRoles").map((r) => ({
+    id: r.id, userId: r.user_id, role: r.role, kind: r.kind, status: r.status,
+    idFrontDocPath: r.id_front_doc_path, idBackDocPath: r.id_back_doc_path, selfieDocPath: r.selfie_doc_path,
+  }));
+}
+
+export async function upsertUserRole(args: {
+  userId: string;
+  role: string;
+  kind: "individual" | "organisation";
+  idFrontDocPath?: string;
+  idBackDocPath?: string;
+  selfieDocPath?: string;
+}): Promise<string> {
+  const res = await supabase.rpc("upsert_user_role", {
+    p_user_id: args.userId, p_role: args.role, p_kind: args.kind,
+    p_id_front_doc_path: args.idFrontDocPath ?? null, p_id_back_doc_path: args.idBackDocPath ?? null,
+    p_selfie_doc_path: args.selfieDocPath ?? null,
+  });
+  const row = mustHaveData(res, "upsertUserRole") as Record<string, unknown>;
+  return row.id as string;
+}
