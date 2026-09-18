@@ -47,6 +47,18 @@ export async function listUserRoles(userId: string): Promise<UserRole[]> {
   }));
 }
 
+// Same admin/agent-assisted manual registration RPC App/'s register-customer
+// page uses (0007_admin_password_gate.sql's password-gated
+// admin_create_user) — lets an Agent create a real user+role record for a
+// customer who can't complete self-service sign-up themselves.
+export async function adminCreateUser(args: {
+  name: string; email: string; role: string; kind: "individual" | "organisation"; password?: string;
+}): Promise<{ userId: string; roleId: string; alreadyExisted: boolean }> {
+  const res = await supabase.rpc("admin_create_user", { p_name: args.name, p_email: args.email, p_role: args.role, p_kind: args.kind, p_password: args.password ?? null });
+  const row = (mustHaveData(res, "adminCreateUser") as Record<string, unknown>[])[0];
+  return { userId: row.user_id as string, roleId: row.role_id as string, alreadyExisted: row.already_existed as boolean };
+}
+
 export async function upsertUserRole(args: {
   userId: string;
   role: string;

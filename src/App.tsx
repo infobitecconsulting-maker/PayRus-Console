@@ -3,14 +3,17 @@ import type { Locale, Role } from "./types.ts";
 import { DESK } from "./i18n.ts";
 import { supabase } from "./lib/supabase-client.ts";
 import { upsertSupabaseUser, listUserRoles } from "./lib/identity.ts";
+import { dbRoleToConsoleRole } from "./lib/roleMapping.ts";
 import { Landing } from "./screens/Landing.tsx";
 import { Register } from "./screens/Register.tsx";
 import { Welcome } from "./screens/Welcome.tsx";
 import { ProfilePicker } from "./screens/ProfilePicker.tsx";
 import { Kyc } from "./screens/Kyc.tsx";
 import { Console } from "./screens/Console.tsx";
+import { Config } from "./screens/Config.tsx";
+import { RegisterCustomer } from "./screens/RegisterCustomer.tsx";
 
-type Stage = "landing" | "welcome" | "register" | "profile" | "kyc" | "app";
+type Stage = "landing" | "welcome" | "register" | "profile" | "kyc" | "app" | "config" | "registerCustomer";
 type AuthSession = { user: { id: string; email?: string; user_metadata?: Record<string, unknown> } } | null;
 
 export default function App() {
@@ -51,7 +54,7 @@ export default function App() {
       setUserId(resolvedUserId);
       const roles = await listUserRoles(resolvedUserId);
       if (roles.length === 1) {
-        setProfile(roles[0].role as Role);
+        setProfile(dbRoleToConsoleRole(roles[0].role));
         setTabIx(0);
         setFilterIx(0);
         setStage("app");
@@ -215,7 +218,17 @@ export default function App() {
           onSwitchProfile={() => go("profile")}
           onSignOut={signOut}
           onLogoClick={goToLogo}
+          onOpenConfig={() => go("config")}
+          onOpenRegisterCustomer={() => go("registerCustomer")}
         />
+      )}
+
+      {stage === "config" && (
+        <Config D={D} locale={locale} setLocale={setLocale} onBack={goBack} onLogoClick={goToLogo} />
+      )}
+
+      {stage === "registerCustomer" && (
+        <RegisterCustomer D={D} locale={locale} setLocale={setLocale} onBack={goBack} onLogoClick={goToLogo} />
       )}
     </div>
   );

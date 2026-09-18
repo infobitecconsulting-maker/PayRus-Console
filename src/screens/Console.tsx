@@ -21,6 +21,8 @@ export function Console({
   onSwitchProfile,
   onSignOut,
   onLogoClick,
+  onOpenConfig,
+  onOpenRegisterCustomer,
 }: {
   D: Desk;
   locale: Locale;
@@ -36,6 +38,8 @@ export function Console({
   onSwitchProfile: () => void;
   onSignOut: () => void;
   onLogoClick: () => void;
+  onOpenConfig: () => void;
+  onOpenRegisterCustomer: () => void;
 }) {
   const [data, setData] = useState<ConsoleData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -131,6 +135,16 @@ export function Console({
           <span className="tag tag-outline" style={{ whiteSpace: "nowrap" }}>
             {profile}
           </span>
+          {profile === "Agent" && (
+            <button type="button" className="btn btn-ghost" onClick={onOpenRegisterCustomer}>
+              {D.registerCustomerButton}
+            </button>
+          )}
+          {profile === "Treasury" && (
+            <button type="button" className="btn btn-ghost" onClick={onOpenConfig}>
+              {D.configButton}
+            </button>
+          )}
           <BackButton label={D.back} onClick={onBack} />
           <button type="button" className="btn btn-ghost" onClick={onSwitchProfile}>
             {D.switchProfile}

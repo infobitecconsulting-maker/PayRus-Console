@@ -129,6 +129,73 @@ export interface KycCopy {
   saveFailed: string;
 }
 
+// The Treasury-only Configuration screen — mirrors App/'s admin Configuration
+// tab (src/pages/admin/_components/config-panel.tsx): FX margin/commission
+// editing, a manual live-rate refresh trigger, and the blocked-transfer /
+// pending-profile recovery tools from supabase/migrations/
+// 0013_fx_margin_config_and_live_rates.sql.
+export interface ConfigCopy {
+  headline: string;
+  subtitle: string;
+  marginTitle: string;
+  marginNote: string;
+  currentMargin: string;
+  currentCommission: string;
+  setBy: string;
+  newMarginLabel: string;
+  newCommissionLabel: string;
+  noteLabel: string;
+  notePlaceholder: string;
+  passwordLabel: string;
+  save: string;
+  saving: string;
+  saved: string;
+  saveFailed: string;
+  liveRatesTitle: string;
+  liveRatesNote: string;
+  lastUpdated: string; // template, %1 = date, %2 = currency count, %3 = source
+  refreshNow: string;
+  refreshing: string;
+  refreshed: string; // template, %1 = count, %2 = source
+  refreshFailed: string; // template, %1 = error message
+  attribution: string;
+  blockedTitle: string;
+  blockedNote: string;
+  nothingBlocked: string;
+  resolve: string;
+  cancel: string;
+  moveTo: string;
+  confirm: string;
+  resolveFailed: string;
+  resolveSaved: string;
+  pendingTitle: string;
+  pendingNote: string;
+  nothingPending: string;
+  activate: string;
+  activating: string;
+  activateFailed: string;
+  activated: string;
+  loading: string;
+}
+
+// Agent/Treasury-assisted manual registration — mirrors App/'s
+// src/pages/register-customer/page.tsx, same admin_create_user RPC.
+export interface RegisterCustomerCopy {
+  headline: string;
+  subtitle: string;
+  name: string;
+  email: string;
+  role: string;
+  kind: string;
+  kindIndividual: string;
+  kindOrganisation: string;
+  submit: string;
+  saving: string;
+  created: string;
+  alreadyExisted: string;
+  saveFailed: string;
+}
+
 export interface LandingCopy {
   kicker: string;
   title: string;
@@ -213,6 +280,8 @@ export interface Desk {
   chooseProfileNote: string;
   signOut: string;
   switchProfile: string;
+  configButton: string;
+  registerCustomerButton: string;
   locked: string;
   termsNote: string;
   filters: string[];
@@ -223,4 +292,6 @@ export interface Desk {
   landing: LandingCopy;
   register: RegisterCopy;
   kyc: KycCopy;
+  config: ConfigCopy;
+  registerCustomer: RegisterCustomerCopy;
 }
