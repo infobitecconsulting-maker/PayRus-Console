@@ -126,6 +126,14 @@ export default function App() {
   }
 
   function signOut() {
+    // Unlike App/ (whose "logged in" gate is its own localUserId flag,
+    // cleared explicitly on logout — see App/src/lib/local-user.ts), this
+    // console's gate IS the live Supabase session: the mount-time effect
+    // above calls getSession() and silently re-authenticates from it. Only
+    // resetting local React state here would leave that session intact, so
+    // reloading the page after "signing out" would log the user straight
+    // back in.
+    void supabase.auth.signOut();
     setIsAuthenticated(false);
     setUserId(null);
     setPendingRole(null);
