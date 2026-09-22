@@ -59,10 +59,18 @@ export default function App() {
         setFilterIx(0);
         setStage("app");
       } else {
-        setStage((s) => (s === "landing" || s === "welcome" ? "profile" : s));
+        // Unconditional — previously gated on `stage === "landing" || "welcome"`,
+        // which silently did nothing for the same-tab "just registered,
+        // email confirmation off" path (stage is "register" at this exact
+        // call time, not "landing"/"welcome"), leaving a freshly-
+        // authenticated 0-role user stuck on the registration screen. The
+        // settledRef guard above already makes this function run-once per
+        // page load, so there's no risk of this clobbering a stage the user
+        // has genuinely moved past since sign-in.
+        setStage("profile");
       }
     } catch {
-      setStage((s) => (s === "landing" || s === "welcome" ? "profile" : s));
+      setStage("profile");
     }
   };
 
