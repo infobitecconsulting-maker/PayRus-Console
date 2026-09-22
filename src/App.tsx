@@ -3,7 +3,7 @@ import type { Locale, Role } from "./types.ts";
 import { DESK } from "./i18n.ts";
 import { supabase } from "./lib/supabase-client.ts";
 import { upsertSupabaseUser, listUserRoles } from "./lib/identity.ts";
-import { dbRoleToConsoleRole } from "./lib/roleMapping.ts";
+import { dbRoleToConsoleRole, isAdminDbRole } from "./lib/roleMapping.ts";
 import { Landing } from "./screens/Landing.tsx";
 import { Register } from "./screens/Register.tsx";
 import { Welcome } from "./screens/Welcome.tsx";
@@ -26,6 +26,11 @@ export default function App() {
   const settledRef = useRef(false);
 
   const [profile, setProfile] = useState<Role>("Treasury");
+  // Mirrors App/'s isAdmin bypass — App/'s "admin" user_roles.role has no
+  // corresponding entry in this console's own Role vocabulary at all, so
+  // it's tracked separately rather than folded into `profile` (see
+  // lib/roleMapping.ts).
+  const [isAdmin, setIsAdmin] = useState(false);
   const [tabIx, setTabIx] = useState(0);
   const [rangeIx, setRangeIx] = useState(0);
   const [filterIx, setFilterIx] = useState(0);
@@ -55,6 +60,7 @@ export default function App() {
       const roles = await listUserRoles(resolvedUserId);
       if (roles.length === 1) {
         setProfile(dbRoleToConsoleRole(roles[0].role));
+        setIsAdmin(isAdminDbRole(roles[0].role));
         setTabIx(0);
         setFilterIx(0);
         setStage("app");
@@ -144,6 +150,7 @@ export default function App() {
     void supabase.auth.signOut();
     setIsAuthenticated(false);
     setUserId(null);
+    setIsAdmin(false);
     setPendingRole(null);
     settledRef.current = false;
     setHistory([]);
@@ -224,6 +231,7 @@ export default function App() {
           locale={locale}
           setLocale={setLocale}
           profile={profile}
+          isAdmin={isAdmin}
           tabIx={tabIx}
           setTabIx={setTabIx}
           rangeIx={rangeIx}

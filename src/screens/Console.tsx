@@ -11,6 +11,7 @@ export function Console({
   locale,
   setLocale,
   profile,
+  isAdmin,
   tabIx,
   setTabIx,
   rangeIx,
@@ -28,6 +29,7 @@ export function Console({
   locale: Locale;
   setLocale: (l: Locale) => void;
   profile: Role;
+  isAdmin: boolean;
   tabIx: number;
   setTabIx: (i: number) => void;
   rangeIx: number;
@@ -95,7 +97,7 @@ export function Console({
   const queueItems = data.queue.filter((q) => q.roles.includes(profile));
 
   function goTab(i: number) {
-    if (!caps.includes(TAB_KEYS[i])) return;
+    if (!isAdmin && !caps.includes(TAB_KEYS[i])) return;
     setTabIx(i);
     setFilterIx(0);
   }
@@ -108,7 +110,7 @@ export function Console({
         </div>
         <div className="pr-tabs">
           {D.tabs.map((label, i) => {
-            const ok = caps.includes(TAB_KEYS[i]);
+            const ok = isAdmin || caps.includes(TAB_KEYS[i]);
             return (
               <button
                 key={label}
@@ -133,14 +135,14 @@ export function Console({
             {D.pilotBadge}
           </span>
           <span className="tag tag-outline" style={{ whiteSpace: "nowrap" }}>
-            {profile}
+            {isAdmin ? "Admin" : profile}
           </span>
-          {profile === "Agent" && (
+          {(profile === "Agent" || isAdmin) && (
             <button type="button" className="btn btn-ghost" onClick={onOpenRegisterCustomer}>
               {D.registerCustomerButton}
             </button>
           )}
-          {profile === "Treasury" && (
+          {(profile === "Treasury" || isAdmin) && (
             <button type="button" className="btn btn-ghost" onClick={onOpenConfig}>
               {D.configButton}
             </button>

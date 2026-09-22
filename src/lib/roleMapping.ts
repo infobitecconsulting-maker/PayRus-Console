@@ -24,6 +24,19 @@ const DB_SLUG_TO_ROLE: Record<string, Role> = Object.fromEntries(
   Object.entries(ROLE_TO_DB_SLUG).map(([role, slug]) => [slug, role as Role]),
 ) as Record<string, Role>;
 
+// "admin" has no slot in ops-console's own Role vocabulary at all (unlike
+// App/, where isAdmin bypasses every profile-type gate) — falling through
+// to the "Other"/starter default would leave a shared admin account with
+// the LEAST access in this console, backwards from App/'s behavior for the
+// same account. Treasury is the closest existing analog (full dashboard
+// content, not a starter shell); isAdminDbRole is the real access bypass,
+// used wherever this console needs to grant admin the same "sees
+// everything" behavior App/'s isAdmin already gets.
 export function dbRoleToConsoleRole(dbRole: string): Role {
+  if (dbRole === "admin") return "Treasury";
   return DB_SLUG_TO_ROLE[dbRole] ?? "Other";
+}
+
+export function isAdminDbRole(dbRole: string): boolean {
+  return dbRole === "admin";
 }
