@@ -176,6 +176,28 @@ export interface ConfigCopy {
   activateFailed: string;
   activated: string;
   loading: string;
+  expensesTitle: string;
+  expensesNote: string;
+  nothingExpenses: string;
+  approve: string;
+  reject: string;
+  expenseResolved: string;
+  expenseFailed: string;
+  cardsTitle: string;
+  cardsNote: string;
+  nothingCards: string;
+  loyaltyTitle: string;
+  loyaltyNote: string;
+  nothingLoyalty: string;
+  betsTitle: string;
+  betsNote: string;
+  nothingBets: string;
+  tontineTitle: string;
+  tontineNote: string;
+  nothingTontine: string;
+  pitchesTitle: string;
+  pitchesNote: string;
+  nothingPitches: string;
 }
 
 // Agent/Treasury-assisted manual registration — mirrors App/'s

@@ -121,3 +121,99 @@ export async function adminActivateProfile(roleId: string): Promise<void> {
   const res = await supabase.rpc("admin_update_user_role", { p_role_id: roleId, p_status: "verified" });
   mustHaveData(res, "adminActivateProfile");
 }
+
+// Phase 6 (supabase/migrations/0021_ops_console_admin_visibility.sql):
+// read-only cross-user visibility into the App/ domains added in
+// 0018-0020, plus the one mutation those screens use (resolve_expense_report,
+// 0019, password-gated like every other admin write).
+
+export interface AdminExpenseReport {
+  id: string; title: string; amount: number; currency: string; category: string; status: string;
+  employeeName: string | null; project: string | null; submittedAt: string; userName: string | null; userEmail: string | null;
+}
+
+export async function adminListExpenseReports(): Promise<AdminExpenseReport[]> {
+  const res = await supabase.rpc("admin_list_expense_reports");
+  return mustHaveData(res, "adminListExpenseReports").map((r: Record<string, unknown>) => ({
+    id: r.id as string, title: r.title as string, amount: Number(r.amount), currency: r.currency as string,
+    category: r.category as string, status: r.status as string, employeeName: (r.employee_name as string) ?? null,
+    project: (r.project as string) ?? null, submittedAt: r.submitted_at as string,
+    userName: (r.user_name as string) ?? null, userEmail: (r.user_email as string) ?? null,
+  }));
+}
+
+export async function adminResolveExpenseReport(args: { reportId: string; status: "approved" | "rejected"; password: string }): Promise<void> {
+  const res = await supabase.rpc("resolve_expense_report", {
+    p_report_id: args.reportId, p_status: args.status, p_admin_password: args.password,
+  });
+  mustHaveData(res, "adminResolveExpenseReport");
+}
+
+export interface AdminCorporateCard {
+  id: string; holderName: string; role: string; limitAmount: number; spentAmount: number; currency: string;
+  createdAt: string; ownerName: string | null; ownerEmail: string | null;
+}
+
+export async function adminListCorporateCards(): Promise<AdminCorporateCard[]> {
+  const res = await supabase.rpc("admin_list_corporate_cards");
+  return mustHaveData(res, "adminListCorporateCards").map((r: Record<string, unknown>) => ({
+    id: r.id as string, holderName: r.holder_name as string, role: r.role as string, limitAmount: Number(r.limit_amount),
+    spentAmount: Number(r.spent_amount), currency: r.currency as string, createdAt: r.created_at as string,
+    ownerName: (r.owner_name as string) ?? null, ownerEmail: (r.owner_email as string) ?? null,
+  }));
+}
+
+export interface AdminLoyaltyAccount {
+  id: string; venueName: string; venueCategory: string; points: number; currency: string;
+  monthlySpend: number; cashbackRate: number; userName: string | null; userEmail: string | null;
+}
+
+export async function adminListLoyaltyAccounts(): Promise<AdminLoyaltyAccount[]> {
+  const res = await supabase.rpc("admin_list_loyalty_accounts");
+  return mustHaveData(res, "adminListLoyaltyAccounts").map((r: Record<string, unknown>) => ({
+    id: r.id as string, venueName: r.venue_name as string, venueCategory: r.venue_category as string, points: Number(r.points),
+    currency: r.currency as string, monthlySpend: Number(r.monthly_spend), cashbackRate: Number(r.cashback_rate),
+    userName: (r.user_name as string) ?? null, userEmail: (r.user_email as string) ?? null,
+  }));
+}
+
+export interface AdminGameBet {
+  id: string; kind: string; stakeAmount: number; currency: string; status: string; payoutAmount: number | null;
+  placedAt: string; resolvedAt: string | null; userName: string | null; userEmail: string | null;
+}
+
+export async function adminListGameBets(): Promise<AdminGameBet[]> {
+  const res = await supabase.rpc("admin_list_game_bets");
+  return mustHaveData(res, "adminListGameBets").map((r: Record<string, unknown>) => ({
+    id: r.id as string, kind: r.kind as string, stakeAmount: Number(r.stake_amount), currency: r.currency as string,
+    status: r.status as string, payoutAmount: r.payout_amount == null ? null : Number(r.payout_amount),
+    placedAt: r.placed_at as string, resolvedAt: (r.resolved_at as string) ?? null,
+    userName: (r.user_name as string) ?? null, userEmail: (r.user_email as string) ?? null,
+  }));
+}
+
+export interface AdminTontineMember {
+  circleId: string; circleName: string; memberPosition: number; joinedAt: string; userName: string | null; userEmail: string | null;
+}
+
+export async function adminListTontineMembers(): Promise<AdminTontineMember[]> {
+  const res = await supabase.rpc("admin_list_tontine_members");
+  return mustHaveData(res, "adminListTontineMembers").map((r: Record<string, unknown>) => ({
+    circleId: r.circle_id as string, circleName: r.circle_name as string, memberPosition: Number(r.member_position),
+    joinedAt: r.joined_at as string, userName: (r.user_name as string) ?? null, userEmail: (r.user_email as string) ?? null,
+  }));
+}
+
+export interface AdminPitchSubmission {
+  id: string; title: string; category: string | null; goal: number; raised: number; currency: string; risk: string;
+  createdAt: string; ownerName: string | null; ownerEmail: string | null;
+}
+
+export async function adminListPitchSubmissions(): Promise<AdminPitchSubmission[]> {
+  const res = await supabase.rpc("admin_list_pitch_submissions");
+  return mustHaveData(res, "adminListPitchSubmissions").map((r: Record<string, unknown>) => ({
+    id: r.id as string, title: r.title as string, category: (r.category as string) ?? null, goal: Number(r.goal),
+    raised: Number(r.raised), currency: r.currency as string, risk: r.risk as string, createdAt: r.created_at as string,
+    ownerName: (r.owner_name as string) ?? null, ownerEmail: (r.owner_email as string) ?? null,
+  }));
+}

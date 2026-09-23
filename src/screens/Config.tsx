@@ -6,6 +6,8 @@ import {
   getLastFxRateUpdate, refreshLiveFxRates, type FxRateUpdate,
   adminListBlockedTransfers, adminResolveTransfer, type BlockedTransfer,
   adminListPendingProfiles, adminActivateProfile, type PendingProfile,
+  adminListExpenseReports, adminResolveExpenseReport, type AdminExpenseReport,
+  adminListCorporateCards, adminListLoyaltyAccounts, adminListGameBets, adminListTontineMembers, adminListPitchSubmissions,
 } from "../lib/adminConfig.ts";
 
 // Treasury-only screen mirroring App/'s admin Configuration tab
@@ -128,6 +130,110 @@ function PendingProfilesSection({ D }: { D: Desk }) {
     </div>
   );
 }
+
+// Phase 6 (supabase/migrations/0021): cross-user oversight of the App/
+// domains added in 0018-0020. Expense reports carry the one mutation
+// (approve/reject, password-gated); everything else is read-only.
+const EXPENSE_STATUS_TAG: Record<string, string> = { pending: "tag-neutral", approved: "tag-success", rejected: "tag-danger" };
+
+function ExpenseReportsSection({ D }: { D: Desk }) {
+  const C = D.config;
+  const [reports, setReports] = useState<AdminExpenseReport[] | null>(null);
+  const [actingId, setActingId] = useState<string | null>(null);
+  const [decision, setDecision] = useState<"approved" | "rejected">("approved");
+  const [password, setPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  const load = () => void adminListExpenseReports().then(setReports).catch(() => setReports([]));
+  useEffect(load, []);
+
+  const handleResolve = async (reportId: string) => {
+    if (!password) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      await adminResolveExpenseReport({ reportId, status: decision, password });
+      setMessage(C.expenseResolved);
+      setActingId(null);
+      setPassword("");
+      load();
+    } catch {
+      setMessage(C.expenseFailed);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="card elev-sm" style={{ gap: "var(--space-3)" }}>
+      <div className="card-title">{C.expensesTitle}</div>
+      <p className="card-body">{C.expensesNote}</p>
+      {!reports && <div className="text-muted" style={{ fontSize: 13 }}>{C.loading}</div>}
+      {reports && reports.length === 0 && <div className="text-muted" style={{ fontSize: 13 }}>{C.nothingExpenses}</div>}
+      {reports?.map((r) => (
+        <div key={r.id} style={{ border: "1px solid var(--color-divider)", borderRadius: "var(--radius-md)", padding: "var(--space-2)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "var(--space-2)", flexWrap: "wrap" }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>{r.title} · {r.userName ?? r.userEmail ?? "—"}</div>
+              <div style={{ fontSize: 11 }} className="text-muted">
+                {r.currency} {r.amount.toLocaleString()} · {r.category}{r.project ? ` · ${r.project}` : ""} · {new Date(r.submittedAt).toLocaleDateString()}
+              </div>
+            </div>
+            {r.status === "pending" ? (
+              <button type="button" className="btn btn-ghost" onClick={() => setActingId(actingId === r.id ? null : r.id)}>
+                {actingId === r.id ? C.cancel : C.resolve}
+              </button>
+            ) : (
+              <span className={`tag ${EXPENSE_STATUS_TAG[r.status] ?? "tag-neutral"}`}>{r.status}</span>
+            )}
+          </div>
+          {actingId === r.id && (
+            <div style={{ marginTop: "var(--space-2)", display: "flex", gap: "var(--space-2)", alignItems: "center", flexWrap: "wrap" }}>
+              <select value={decision} onChange={(e) => setDecision(e.target.value as "approved" | "rejected")} className="input" style={{ width: "auto" }}>
+                <option value="approved">{C.approve}</option>
+                <option value="rejected">{C.reject}</option>
+              </select>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={C.passwordLabel} className="input" style={{ width: 160 }} />
+              <button type="button" className="btn btn-primary" disabled={saving || !password} onClick={() => void handleResolve(r.id)}>
+                {saving ? C.saving : C.confirm}
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+      {message && <div className="tag tag-neutral" style={{ alignSelf: "flex-start" }}>{message}</div>}
+    </div>
+  );
+}
+
+function ReadOnlyListSection<T>({ title, note, emptyText, loadingText, load, keyOf, render }: {
+  title: string; note: string; emptyText: string; loadingText: string;
+  load: () => Promise<T[]>; keyOf: (row: T) => string; render: (row: T) => { primary: string; secondary: string };
+}) {
+  const [rows, setRows] = useState<T[] | null>(null);
+  useEffect(() => { void load().then(setRows).catch(() => setRows([])); }, [load]);
+
+  return (
+    <div className="card elev-sm" style={{ gap: "var(--space-3)" }}>
+      <div className="card-title">{title}</div>
+      <p className="card-body">{note}</p>
+      {!rows && <div className="text-muted" style={{ fontSize: 13 }}>{loadingText}</div>}
+      {rows && rows.length === 0 && <div className="text-muted" style={{ fontSize: 13 }}>{emptyText}</div>}
+      {rows?.map((row) => {
+        const { primary, secondary } = render(row);
+        return (
+          <div key={keyOf(row)} style={{ border: "1px solid var(--color-divider)", borderRadius: "var(--radius-md)", padding: "var(--space-2)" }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{primary}</div>
+            <div style={{ fontSize: 11 }} className="text-muted">{secondary}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+const who = (name: string | null, email: string | null) => name ?? email ?? "—";
 
 export function Config({
   D,
@@ -275,6 +381,47 @@ export function Config({
 
           <BlockedTransfersSection D={D} />
           <PendingProfilesSection D={D} />
+          <ExpenseReportsSection D={D} />
+          <ReadOnlyListSection
+            title={C.cardsTitle} note={C.cardsNote} emptyText={C.nothingCards} loadingText={C.loading}
+            load={adminListCorporateCards} keyOf={(c) => c.id}
+            render={(c) => ({
+              primary: `${c.holderName} · ${c.role}`,
+              secondary: `${c.currency} ${c.spentAmount.toLocaleString()} / ${c.limitAmount.toLocaleString()} · ${who(c.ownerName, c.ownerEmail)}`,
+            })}
+          />
+          <ReadOnlyListSection
+            title={C.loyaltyTitle} note={C.loyaltyNote} emptyText={C.nothingLoyalty} loadingText={C.loading}
+            load={adminListLoyaltyAccounts} keyOf={(a) => a.id}
+            render={(a) => ({
+              primary: `${a.venueName} · ${who(a.userName, a.userEmail)}`,
+              secondary: `${a.points.toLocaleString()} pts · ${a.currency} ${a.monthlySpend.toLocaleString()} this month · ${a.cashbackRate}% cashback`,
+            })}
+          />
+          <ReadOnlyListSection
+            title={C.betsTitle} note={C.betsNote} emptyText={C.nothingBets} loadingText={C.loading}
+            load={adminListGameBets} keyOf={(b) => b.id}
+            render={(b) => ({
+              primary: `${b.kind} · ${who(b.userName, b.userEmail)}`,
+              secondary: `${b.currency} ${b.stakeAmount.toLocaleString()} stake · ${b.status}${b.payoutAmount != null ? ` · payout ${b.payoutAmount.toLocaleString()}` : ""} · ${new Date(b.placedAt).toLocaleString()}`,
+            })}
+          />
+          <ReadOnlyListSection
+            title={C.tontineTitle} note={C.tontineNote} emptyText={C.nothingTontine} loadingText={C.loading}
+            load={adminListTontineMembers} keyOf={(m) => `${m.circleId}-${m.memberPosition}`}
+            render={(m) => ({
+              primary: `${m.circleName} · #${m.memberPosition}`,
+              secondary: `${who(m.userName, m.userEmail)} · ${new Date(m.joinedAt).toLocaleDateString()}`,
+            })}
+          />
+          <ReadOnlyListSection
+            title={C.pitchesTitle} note={C.pitchesNote} emptyText={C.nothingPitches} loadingText={C.loading}
+            load={adminListPitchSubmissions} keyOf={(p) => p.id}
+            render={(p) => ({
+              primary: `${p.title} · ${who(p.ownerName, p.ownerEmail)}`,
+              secondary: `${p.category ?? "—"} · ${p.currency} ${p.raised.toLocaleString()} / ${p.goal.toLocaleString()} · ${p.risk} risk · ${new Date(p.createdAt).toLocaleDateString()}`,
+            })}
+          />
         </div>
       </div>
     </div>
