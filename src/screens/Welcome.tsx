@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Desk, Locale } from "../types.ts";
 import { BackButton, LocaleMenu, PayRusLogo } from "../components/parts.tsx";
 import { supabase } from "../lib/supabase-client.ts";
+import { resolveEmailByIdentifier } from "../lib/identity.ts";
 import { OAUTH_PROVIDERS, signInWithOAuthProvider, type OAuthProviderId } from "../lib/supabase-providers.ts";
 
 type SecondaryPanel = "magic" | "phone" | "sso" | null;
@@ -73,7 +74,12 @@ export function Welcome({
     setNotice(null);
     setChecking(true);
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      const resolvedEmail = await resolveEmailByIdentifier(email.trim());
+      if (!resolvedEmail) {
+        setError(D.signInFailed);
+        return;
+      }
+      const { data, error: authError } = await supabase.auth.signInWithPassword({ email: resolvedEmail, password });
       if (authError) {
         setError(D.signInFailed);
         return;
@@ -91,7 +97,8 @@ export function Welcome({
     }
     setError(null);
     try {
-      await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin });
+      const resolvedEmail = (await resolveEmailByIdentifier(email.trim())) ?? email.trim();
+      await supabase.auth.resetPasswordForEmail(resolvedEmail, { redirectTo: window.location.origin });
     } finally {
       setNotice(D.resetLinkSent);
     }
@@ -105,8 +112,9 @@ export function Welcome({
     setError(null);
     setMagicSending(true);
     try {
+      const resolvedEmail = (await resolveEmailByIdentifier(email.trim())) ?? email.trim();
       const { error: authError } = await supabase.auth.signInWithOtp({
-        email: email.trim(),
+        email: resolvedEmail,
         options: { shouldCreateUser: false, emailRedirectTo: window.location.origin },
       });
       if (authError) {
@@ -230,7 +238,8 @@ export function Welcome({
             <input
               className="input"
               id="ops-email"
-              type="email"
+              type="text"
+              autoComplete="username"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               style={{ borderRadius: 12, borderColor: "var(--auth-border)" }}

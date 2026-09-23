@@ -39,6 +39,14 @@ export async function upsertSupabaseUser(args: {
   return { userId: row.id as string, name: (row.name as string) ?? args.email };
 }
 
+// Sign-in takes a username, email or phone (same anon-callable RPC App/
+// uses); Supabase's own password sign-in only accepts an email.
+export async function resolveEmailByIdentifier(identifier: string): Promise<string | null> {
+  const res = await supabase.rpc("resolve_email_by_identifier", { p_identifier: identifier });
+  if (res.error) throw new Error(res.error.message);
+  return (res.data as string | null) ?? null;
+}
+
 // Password-gated (gate 'admin' in gate_passwords, checked server-side by
 // admin_grant_admin_role) — the only way to obtain the admin role here.
 export async function grantAdminRole(userId: string, password: string): Promise<void> {
