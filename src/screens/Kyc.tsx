@@ -3,7 +3,7 @@ import type { Desk, Locale, Role } from "../types.ts";
 import { BackButton, LocaleMenu, PayRusLogo } from "../components/parts.tsx";
 import { uploadKycFile } from "../lib/kycUpload.ts";
 import { upsertUserRole } from "../lib/identity.ts";
-import { ROLE_TO_DB_SLUG } from "../lib/roleMapping.ts";
+import { consoleRoleToDbSlug, loadRoleDefinitions } from "../lib/roleMapping.ts";
 
 // Inserted between role selection (ProfilePicker) and the dashboard — same
 // three required uploads as App/'s KYC wizard (src/pages/profile/page.tsx's
@@ -61,9 +61,10 @@ export function Kyc({
     setError(null);
     try {
       if (userId) {
+        await loadRoleDefinitions();
         await upsertUserRole({
           userId,
-          role: ROLE_TO_DB_SLUG[role],
+          role: consoleRoleToDbSlug(role),
           kind: "individual",
           idFrontDocPath: idFrontDocId ?? undefined,
           idBackDocPath: idBackDocId ?? undefined,

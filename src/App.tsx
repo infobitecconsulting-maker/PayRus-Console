@@ -3,7 +3,7 @@ import type { Locale, Role } from "./types.ts";
 import { DESK } from "./i18n.ts";
 import { supabase } from "./lib/supabase-client.ts";
 import { upsertSupabaseUser, listUserRoles } from "./lib/identity.ts";
-import { dbRoleToConsoleRole, isAdminDbRole } from "./lib/roleMapping.ts";
+import { dbRoleToConsoleRole, isAdminDbRole, loadRoleDefinitions } from "./lib/roleMapping.ts";
 import { Landing } from "./screens/Landing.tsx";
 import { Register } from "./screens/Register.tsx";
 import { Welcome } from "./screens/Welcome.tsx";
@@ -58,6 +58,7 @@ export default function App() {
       const { userId: resolvedUserId } = await upsertSupabaseUser({ supabaseUserId: session.user.id, email: session.user.email, name });
       setUserId(resolvedUserId);
       const roles = await listUserRoles(resolvedUserId);
+      await loadRoleDefinitions();
       if (roles.length === 1) {
         setProfile(dbRoleToConsoleRole(roles[0].role));
         setIsAdmin(isAdminDbRole(roles[0].role));

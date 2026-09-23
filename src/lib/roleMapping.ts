@@ -1,42 +1,52 @@
-// DB-canonical role slugs (App/'s user_roles.role values, from
-// App/src/pages/profile/page.tsx's ROLES list: personal, merchant, agent,
-// treasury, public_institution, ngo, group, starter) vs. the display-cased
-// Role type this app's entire UI is keyed off (data.ts/i18n.ts's roleOrder,
-// caps, kpiText, positions, etc. — all Record<Role, ...>). Any role read
-// from or written to the shared user_roles table must go through this
-// mapping: writing "Personal" instead of "personal", or reading it back
-// without translating, silently breaks the *other* app's own role gating
-// and role-scoped views for the same account.
+// DB-canonical role slugs (user_roles.role) vs. the display-cased Role type
+// this console's UI is keyed off (data.ts/i18n.ts's roleOrder, caps, ...).
+// The mapping itself lives in the public.role_definitions table
+// (supabase/migrations/0022) — `console_role` and `is_admin` per slug — so
+// App/ and this console read one source instead of two hardcoded copies.
+// Any role read from or written to the shared user_roles table must go
+// through here: writing "Personal" instead of "personal" silently breaks the
+// *other* app's role gating for the same account.
+//
+// "admin" has no slot in this console's Role vocabulary; its row maps to
+// Treasury (full dashboard content) and is_admin is the real access bypass.
 import type { Role } from "../types.ts";
+import { supabase } from "./supabase-client.ts";
 
-export const ROLE_TO_DB_SLUG: Record<Role, string> = {
-  Personal: "personal",
-  Merchant: "merchant",
-  Agent: "agent",
-  Treasury: "treasury",
-  Institution: "public_institution",
-  NGO: "ngo",
-  Group: "group",
-  Other: "starter",
-};
+interface RoleDefinitionRow { slug: string; console_role: string; is_admin: boolean; sort_order: number }
 
-const DB_SLUG_TO_ROLE: Record<string, Role> = Object.fromEntries(
-  Object.entries(ROLE_TO_DB_SLUG).map(([role, slug]) => [slug, role as Role]),
-) as Record<string, Role>;
+let definitions: RoleDefinitionRow[] = [];
+let loading: Promise<void> | null = null;
 
-// "admin" has no slot in ops-console's own Role vocabulary at all (unlike
-// App/, where isAdmin bypasses every profile-type gate) — falling through
-// to the "Other"/starter default would leave a shared admin account with
-// the LEAST access in this console, backwards from App/'s behavior for the
-// same account. Treasury is the closest existing analog (full dashboard
-// content, not a starter shell); isAdminDbRole is the real access bypass,
-// used wherever this console needs to grant admin the same "sees
-// everything" behavior App/'s isAdmin already gets.
+// Idempotent; call before the first sync lookup (App.tsx does at sign-in).
+export function loadRoleDefinitions(): Promise<void> {
+  if (definitions.length > 0) return Promise.resolve();
+  if (loading) return loading;
+  const p: Promise<void> = (async () => {
+    try {
+      const { data, error } = await supabase
+        .from("role_definitions")
+        .select("slug, console_role, is_admin, sort_order")
+        .order("sort_order");
+      if (error) throw new Error(`loadRoleDefinitions: ${error.message}`);
+      definitions = (data ?? []) as RoleDefinitionRow[];
+    } finally {
+      loading = null;
+    }
+  })();
+  loading = p;
+  return p;
+}
+
 export function dbRoleToConsoleRole(dbRole: string): Role {
-  if (dbRole === "admin") return "Treasury";
-  return DB_SLUG_TO_ROLE[dbRole] ?? "Other";
+  return (definitions.find((d) => d.slug === dbRole)?.console_role as Role | undefined) ?? "Other";
 }
 
 export function isAdminDbRole(dbRole: string): boolean {
-  return dbRole === "admin";
+  return definitions.find((d) => d.slug === dbRole)?.is_admin ?? false;
+}
+
+export function consoleRoleToDbSlug(role: Role): string {
+  const def = definitions.find((d) => !d.is_admin && d.console_role === role);
+  if (!def) throw new Error(`consoleRoleToDbSlug: no role_definitions row for ${role}`);
+  return def.slug;
 }
