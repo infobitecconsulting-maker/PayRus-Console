@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Locale, Role } from "./types.ts";
 import { DESK } from "./i18n.ts";
 import { supabase } from "./lib/supabase-client.ts";
-import { upsertSupabaseUser, listUserRoles } from "./lib/identity.ts";
+import { upsertSupabaseUser, listUserRoles, grantAdminRole } from "./lib/identity.ts";
 import { dbRoleToConsoleRole, isAdminDbRole, loadRoleDefinitions } from "./lib/roleMapping.ts";
 import { Landing } from "./screens/Landing.tsx";
 import { Register } from "./screens/Register.tsx";
@@ -132,7 +132,22 @@ export default function App() {
     go("kyc");
   }
 
+  // Password-checked server-side (gate 'admin'); a wrong password throws and
+  // the picker shows the error. Success = App/'s isAdmin bypass.
+  async function pickAdmin(password: string) {
+    if (!userId) throw new Error("not signed in");
+    await grantAdminRole(userId, password);
+    await loadRoleDefinitions();
+    setProfile(dbRoleToConsoleRole("admin"));
+    setIsAdmin(true);
+    setTabIx(0);
+    setFilterIx(0);
+    setIsAuthenticated(true);
+    go("app");
+  }
+
   function completeKyc() {
+    setIsAdmin(false);
     if (pendingRole) setProfile(pendingRole);
     setTabIx(0);
     setFilterIx(0);
@@ -210,7 +225,7 @@ export default function App() {
       )}
 
       {stage === "profile" && (
-        <ProfilePicker D={D} onBack={goBack} onPick={pickRole} />
+        <ProfilePicker D={D} onBack={goBack} onPick={pickRole} onPickAdmin={pickAdmin} />
       )}
 
       {stage === "kyc" && pendingRole && (

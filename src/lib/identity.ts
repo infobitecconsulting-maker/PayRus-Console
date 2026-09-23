@@ -39,6 +39,13 @@ export async function upsertSupabaseUser(args: {
   return { userId: row.id as string, name: (row.name as string) ?? args.email };
 }
 
+// Password-gated (gate 'admin' in gate_passwords, checked server-side by
+// admin_grant_admin_role) — the only way to obtain the admin role here.
+export async function grantAdminRole(userId: string, password: string): Promise<void> {
+  const res = await supabase.rpc("admin_grant_admin_role", { p_user_id: userId, p_password: password });
+  if (res.error) throw new Error(res.error.message);
+}
+
 export async function listUserRoles(userId: string): Promise<UserRole[]> {
   const res = await supabase.from("user_roles").select("*").eq("user_id", userId);
   return mustHaveData(res, "listUserRoles").map((r) => ({

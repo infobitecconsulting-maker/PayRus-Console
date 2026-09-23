@@ -300,6 +300,11 @@ export interface Desk {
   phoneOtpSent: string;
   chooseProfile: string;
   chooseProfileNote: string;
+  adminRoleTitle: string;
+  adminRoleNote: string;
+  adminPasswordLabel: string;
+  adminUnlock: string;
+  adminWrongPassword: string;
   signOut: string;
   switchProfile: string;
   configButton: string;
