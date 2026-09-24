@@ -24,6 +24,8 @@ export function Console({
   onLogoClick,
   onOpenConfig,
   onOpenRegisterCustomer,
+  canAdminister,
+  onOpenAdmin,
 }: {
   D: Desk;
   locale: Locale;
@@ -41,6 +43,8 @@ export function Console({
   onSignOut: () => void;
   onLogoClick: () => void;
   onOpenConfig: () => void;
+  canAdminister: boolean;
+  onOpenAdmin: () => void;
   onOpenRegisterCustomer: () => void;
 }) {
   const [data, setData] = useState<ConsoleData | null>(null);
@@ -140,6 +144,11 @@ export function Console({
           {(profile === "Agent" || isAdmin) && (
             <button type="button" className="btn btn-ghost" onClick={onOpenRegisterCustomer}>
               {D.registerCustomerButton}
+            </button>
+          )}
+          {canAdminister && (
+            <button type="button" className="btn btn-ghost" onClick={onOpenAdmin}>
+              {D.adminPage.button}
             </button>
           )}
           {(profile === "Treasury" || isAdmin) && (

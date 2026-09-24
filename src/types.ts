@@ -134,6 +134,54 @@ export interface KycCopy {
 // editing, a manual live-rate refresh trigger, and the blocked-transfer /
 // pending-profile recovery tools from supabase/migrations/
 // 0013_fx_margin_config_and_live_rates.sql.
+export interface AdminPageCopy {
+  button: string;
+  headline: string;
+  subtitle: string;
+  tabUsers: string;
+  tabTransactions: string;
+  tabEscalations: string;
+  tabStaff: string;
+  search: string;
+  allCallers: string;
+  callerLabel: string;
+  edit: string;
+  close: string;
+  save: string;
+  saved: string;
+  name: string;
+  phone: string;
+  country: string;
+  currency: string;
+  kyc: string;
+  complete: string;
+  closeDispute: string;
+  refund: string;
+  voidTx: string;
+  creditUser: string;
+  escalate: string;
+  approve: string;
+  reject: string;
+  markDone: string;
+  sendEscalation: string;
+  requestedChange: string;
+  userReported: string;
+  assign: string;
+  revoke: string;
+  matrixTitle: string;
+  readOnlyNote: string;
+  loading: string;
+  empty: string;
+  roleLabel: string;
+  notePrompt: string;
+  reasonPrompt: string;
+  passwordPrompt: string;
+  amountPrompt: string;
+  noAccess: string;
+  selectUser: string;
+  deleteNote: string;
+}
+
 export interface ConfigCopy {
   headline: string;
   subtitle: string;
@@ -319,6 +367,7 @@ export interface Desk {
   landing: LandingCopy;
   register: RegisterCopy;
   kyc: KycCopy;
+  adminPage: AdminPageCopy;
   config: ConfigCopy;
   registerCustomer: RegisterCustomerCopy;
 }

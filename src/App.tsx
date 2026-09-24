@@ -11,9 +11,11 @@ import { ProfilePicker } from "./screens/ProfilePicker.tsx";
 import { Kyc } from "./screens/Kyc.tsx";
 import { Console } from "./screens/Console.tsx";
 import { Config } from "./screens/Config.tsx";
+import { Admin } from "./screens/Admin.tsx";
+import { getMyPermissions } from "./lib/adminStaff.ts";
 import { RegisterCustomer } from "./screens/RegisterCustomer.tsx";
 
-type Stage = "landing" | "welcome" | "register" | "profile" | "kyc" | "app" | "config" | "registerCustomer";
+type Stage = "landing" | "welcome" | "register" | "profile" | "kyc" | "app" | "config" | "admin" | "registerCustomer";
 type AuthSession = { user: { id: string; email?: string; user_metadata?: Record<string, unknown> } } | null;
 
 export default function App() {
@@ -31,6 +33,8 @@ export default function App() {
   // it's tracked separately rather than folded into `profile` (see
   // lib/roleMapping.ts).
   const [isAdmin, setIsAdmin] = useState(false);
+  // True when the account holds a staff role or admin tier (any read right).
+  const [canAdminister, setCanAdminister] = useState(false);
   const [tabIx, setTabIx] = useState(0);
   const [rangeIx, setRangeIx] = useState(0);
   const [filterIx, setFilterIx] = useState(0);
@@ -106,6 +110,13 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (stage !== "app" || !isAuthenticated) return;
+    void getMyPermissions()
+      .then((p) => setCanAdminister(p.isSuperadmin || p.users.read || p.transactions.read))
+      .catch(() => setCanAdminister(false));
+  }, [stage, isAuthenticated, isAdmin, userId]);
+
   function go(next: Stage) {
     setHistory((h) => [...h, stage]);
     setStage(next);
@@ -167,6 +178,7 @@ export default function App() {
     setIsAuthenticated(false);
     setUserId(null);
     setIsAdmin(false);
+    setCanAdminister(false);
     setPendingRole(null);
     settledRef.current = false;
     setHistory([]);
@@ -259,8 +271,14 @@ export default function App() {
           onSignOut={signOut}
           onLogoClick={goToLogo}
           onOpenConfig={() => go("config")}
+          canAdminister={canAdminister}
+          onOpenAdmin={() => go("admin")}
           onOpenRegisterCustomer={() => go("registerCustomer")}
         />
+      )}
+
+      {stage === "admin" && (
+        <Admin D={D} locale={locale} setLocale={setLocale} onBack={goBack} onLogoClick={goToLogo} />
       )}
 
       {stage === "config" && (
