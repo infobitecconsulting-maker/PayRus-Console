@@ -16,9 +16,10 @@ import { Settings } from "./screens/Settings.tsx";
 import { getMyPermissions } from "./lib/adminStaff.ts";
 import { RegisterCustomer } from "./screens/RegisterCustomer.tsx";
 import Organisation from "./screens/Organisation.tsx";
+import { Send } from "./screens/Send.tsx";
 import { myMemberships } from "./lib/org.ts";
 
-type Stage = "organisation" | "landing" | "welcome" | "register" | "profile" | "kyc" | "app" | "config" | "admin" | "settings" | "registerCustomer";
+type Stage = "send" | "organisation" | "landing" | "welcome" | "register" | "profile" | "kyc" | "app" | "config" | "admin" | "settings" | "registerCustomer";
 type AuthSession = { user: { id: string; email?: string; user_metadata?: Record<string, unknown> } } | null;
 
 export default function App() {
@@ -285,6 +286,7 @@ export default function App() {
           onOpenAdmin={() => go("admin")}
           canOrganise={canOrganise}
           onOpenOrganisation={() => go("organisation")}
+          onOpenSend={() => go("send")}
           userId={userId}
           onOpenSettings={() => go("settings")}
           onOpenRegisterCustomer={() => go("registerCustomer")}
@@ -297,6 +299,10 @@ export default function App() {
 
       {stage === "admin" && (
         <Admin D={D} locale={locale} setLocale={setLocale} onBack={goBack} onLogoClick={goToLogo} />
+      )}
+
+      {stage === "send" && (
+        <Send D={D} locale={locale} setLocale={setLocale} userId={userId} onBack={goBack} onLogoClick={goToLogo} />
       )}
 
       {stage === "organisation" && (

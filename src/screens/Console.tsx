@@ -30,6 +30,7 @@ export function Console({
   onOpenAdmin,
   canOrganise,
   onOpenOrganisation,
+  onOpenSend,
   userId,
   onOpenSettings,
 }: {
@@ -54,6 +55,7 @@ export function Console({
   onOpenAdmin: () => void;
   canOrganise: boolean;
   onOpenOrganisation: () => void;
+  onOpenSend: () => void;
   userId: string | null;
   onOpenSettings: () => void;
   onOpenRegisterCustomer: () => void;
@@ -155,6 +157,11 @@ export function Console({
           <button type="button" className="btn btn-ghost" onClick={onOpenSettings}>
             {D.settings.button}
           </button>
+          {userId && (
+            <button type="button" className="btn btn-ghost" onClick={onOpenSend}>
+              {D.sendPage.button}
+            </button>
+          )}
           {canOrganise && (
             <button type="button" className="btn btn-ghost" onClick={onOpenOrganisation}>
               {D.orgPage.button}

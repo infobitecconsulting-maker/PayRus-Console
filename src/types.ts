@@ -203,6 +203,44 @@ export interface SettingsCopy {
   areaLabel: string;
 }
 
+export interface SendPageCopy {
+  button: string;
+  headline: string;
+  subtitle: string;
+  signIn: string;
+  findLabel: string;
+  findPlaceholder: string;
+  find: string;
+  checking: string;
+  findNote: string;
+  yourContacts: string;
+  sentTimes: string;
+  lastSent: string;
+  noContactMatch: string;
+  notFound: string;
+  cannotSelf: string;
+  amountLabel: string;
+  currencyLabel: string;
+  noteLabel: string;
+  notePh: string;
+  fee: string;
+  total: string;
+  balance: string;
+  insufficient: string;
+  review: string;
+  back: string;
+  confirmTitle: string;
+  confirm: string;
+  sending: string;
+  success: string;
+  sentTo: string;
+  from: string;
+  to: string;
+  reference: string;
+  another: string;
+  failed: string;
+}
+
 export interface OrgPageCopy {
   button: string;
   headline: string;
@@ -589,6 +627,7 @@ export interface Desk {
   settings: SettingsCopy;
   adminPage: AdminPageCopy;
   orgPage: OrgPageCopy;
+  sendPage: SendPageCopy;
   config: ConfigCopy;
   registerCustomer: RegisterCustomerCopy;
 }
