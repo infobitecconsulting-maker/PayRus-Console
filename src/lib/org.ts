@@ -115,8 +115,9 @@ export async function runCaseTriage(caseId: string): Promise<{ via: "ai" | "rule
           body: JSON.stringify({ caseId }),
         });
         const body = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
-        if (res.ok) return { via: "ai" };
+        if (res.ok && !body.error) return { via: "ai" };
         if (res.status === 401 || res.status === 403) throw new Error(body.message ?? "Not permitted");
+        if (body.error === "forbidden") throw new Error(body.message ?? "Not permitted");
         fallbackReason = body.error === "not_configured" ? "AI is not configured" : "AI is unavailable";
       }
     } catch (e) {
