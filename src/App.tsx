@@ -20,7 +20,7 @@ import { Send } from "./screens/Send.tsx";
 import { myMemberships } from "./lib/org.ts";
 import { needsMfaChallenge } from "./lib/mfa.ts";
 import { MfaGate } from "./screens/MfaGate.tsx";
-import { MfaStepUpHost } from "./components/Mfa.tsx";
+import { MfaStepUpHost, StaffMfaGate } from "./components/Mfa.tsx";
 
 type Stage = "mfa" | "send" | "organisation" | "landing" | "welcome" | "register" | "profile" | "kyc" | "app" | "config" | "admin" | "settings" | "registerCustomer";
 type AuthSession = { user: { id: string; email?: string; user_metadata?: Record<string, unknown> } } | null;
@@ -322,7 +322,7 @@ export default function App() {
       )}
 
       {stage === "admin" && (
-        <Admin D={D} locale={locale} setLocale={setLocale} onBack={goBack} onLogoClick={goToLogo} />
+        <StaffMfaGate locale={locale} onMessage={() => undefined}><Admin D={D} locale={locale} setLocale={setLocale} onBack={goBack} onLogoClick={goToLogo} /></StaffMfaGate>
       )}
 
       {stage === "send" && (
@@ -334,7 +334,7 @@ export default function App() {
       )}
 
       {stage === "config" && (
-        <Config D={D} locale={locale} setLocale={setLocale} onBack={goBack} onLogoClick={goToLogo} />
+        <StaffMfaGate locale={locale} onMessage={() => undefined}><Config D={D} locale={locale} setLocale={setLocale} onBack={goBack} onLogoClick={goToLogo} /></StaffMfaGate>
       )}
 
       {stage === "registerCustomer" && (
