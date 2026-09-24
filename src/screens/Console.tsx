@@ -28,6 +28,8 @@ export function Console({
   canAdminister,
   canConfigure,
   onOpenAdmin,
+  canOrganise,
+  onOpenOrganisation,
   userId,
   onOpenSettings,
 }: {
@@ -50,6 +52,8 @@ export function Console({
   canAdminister: boolean;
   canConfigure: boolean;
   onOpenAdmin: () => void;
+  canOrganise: boolean;
+  onOpenOrganisation: () => void;
   userId: string | null;
   onOpenSettings: () => void;
   onOpenRegisterCustomer: () => void;
@@ -151,6 +155,11 @@ export function Console({
           <button type="button" className="btn btn-ghost" onClick={onOpenSettings}>
             {D.settings.button}
           </button>
+          {canOrganise && (
+            <button type="button" className="btn btn-ghost" onClick={onOpenOrganisation}>
+              {D.orgPage.button}
+            </button>
+          )}
           {canAdminister && (
             <button type="button" className="btn btn-ghost" onClick={onOpenAdmin}>
               {D.adminPage.button}

@@ -15,8 +15,10 @@ import { Admin } from "./screens/Admin.tsx";
 import { Settings } from "./screens/Settings.tsx";
 import { getMyPermissions } from "./lib/adminStaff.ts";
 import { RegisterCustomer } from "./screens/RegisterCustomer.tsx";
+import Organisation from "./screens/Organisation.tsx";
+import { myMemberships } from "./lib/org.ts";
 
-type Stage = "landing" | "welcome" | "register" | "profile" | "kyc" | "app" | "config" | "admin" | "settings" | "registerCustomer";
+type Stage = "organisation" | "landing" | "welcome" | "register" | "profile" | "kyc" | "app" | "config" | "admin" | "settings" | "registerCustomer";
 type AuthSession = { user: { id: string; email?: string; user_metadata?: Record<string, unknown> } } | null;
 
 export default function App() {
@@ -38,6 +40,7 @@ export default function App() {
   const [canAdminister, setCanAdminister] = useState(false);
   // Admin tier (admin or superadmin, from the database) unlocks Configuration.
   const [canConfigure, setCanConfigure] = useState(false);
+  const [canOrganise, setCanOrganise] = useState(false);
   const [tabIx, setTabIx] = useState(0);
   const [rangeIx, setRangeIx] = useState(0);
   const [filterIx, setFilterIx] = useState(0);
@@ -118,6 +121,8 @@ export default function App() {
     void getMyPermissions()
       .then((p) => { setCanAdminister(p.isSuperadmin || p.users.read || p.transactions.read); setCanConfigure(p.isAdmin); })
       .catch(() => { setCanAdminister(false); setCanConfigure(false); });
+    void Promise.all([getMyPermissions().catch(() => null), myMemberships().catch(() => [])])
+      .then(([p, m]) => setCanOrganise(!!p?.isSuperadmin || m.some((x) => x.status === "active")));
   }, [stage, isAuthenticated, isAdmin, userId]);
 
   function go(next: Stage) {
@@ -278,6 +283,8 @@ export default function App() {
           canAdminister={canAdminister}
           canConfigure={canConfigure}
           onOpenAdmin={() => go("admin")}
+          canOrganise={canOrganise}
+          onOpenOrganisation={() => go("organisation")}
           userId={userId}
           onOpenSettings={() => go("settings")}
           onOpenRegisterCustomer={() => go("registerCustomer")}
@@ -290,6 +297,10 @@ export default function App() {
 
       {stage === "admin" && (
         <Admin D={D} locale={locale} setLocale={setLocale} onBack={goBack} onLogoClick={goToLogo} />
+      )}
+
+      {stage === "organisation" && (
+        <Organisation D={D} locale={locale} setLocale={setLocale} onBack={goBack} onLogoClick={goToLogo} />
       )}
 
       {stage === "config" && (
