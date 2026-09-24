@@ -190,6 +190,17 @@ export interface SettingsCopy {
   fxTitle: string;
   fxTitleNoTime: string;
   fxUnavailable: string;
+  locTitle: string;
+  locDesc: string;
+  locCountry: string;
+  locUpdated: string;
+  locFailed: string;
+  locDenied: string;
+  locBtn: string;
+  locFilled: string;
+  postalLooking: string;
+  postalNone: string;
+  areaLabel: string;
 }
 
 export interface AdminPageCopy {
@@ -268,6 +279,30 @@ export interface AdminPageCopy {
   created: string;
   walletsLabel: string;
   adminOnly: string;
+  escReasonLabel: string;
+  escReasonPlaceholder: string;
+  escReasonRejection: string;
+  escReasonDecision: string;
+  escShow: string;
+  escOpenOnly: string;
+  escAll: string;
+  escHighestFirst: string;
+  aiAssistant: string;
+  aiRules: string;
+  aiAnalyse: string;
+  aiReanalyse: string;
+  aiAnalysing: string;
+  aiEmpty: string;
+  aiSuggests: string;
+  aiDraftReply: string;
+  aiUseReply: string;
+  aiReady: string;
+  aiFallback: string;
+  aiActApprove: string;
+  aiActReject: string;
+  aiActInfo: string;
+  escRejected: string;
+  escDoneNote: string;
 }
 
 export interface ConfigCopy {

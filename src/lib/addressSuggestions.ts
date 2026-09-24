@@ -31,7 +31,7 @@ async function post<T>(path: string, body: unknown): Promise<T[]> {
 export function suggestStreets(params: {
   country: string;
   city: string;
-  province: string;
+  province?: string;
   query: string;
 }): Promise<string[]> {
   return post<string>("/addressSuggestions", params);
@@ -40,7 +40,7 @@ export function suggestStreets(params: {
 export function suggestPostalCodes(params: {
   country: string;
   city: string;
-  province: string;
+  province?: string;
 }): Promise<PostalCodeSuggestion[]> {
   return post<PostalCodeSuggestion>("/postalCodeSuggestions", params);
 }

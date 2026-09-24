@@ -6,6 +6,7 @@ import {
   loadMyProfile, markNotificationRead, setPreferredFxCurrency, signOutOtherDevices, updateMyProfile,
   type FxSnapshot, type MyCard, type MyNotification, type MyProfile, type MyWallet,
 } from "../lib/account.ts";
+import { clearLocation, getLocationFollow, setLocationFollow, syncLocation } from "../lib/location.ts";
 
 type Section = "profile" | "security" | "notifications" | "appearance" | "payments" | "privacy" | "about";
 const LANGUAGES: { id: Locale; label: string }[] = [
@@ -34,6 +35,25 @@ export function Settings({ D, locale, setLocale, userId, onBack, onLogoClick }: 
   const [fx, setFx] = useState<FxSnapshot | null>(null);
   const [tick, setTick] = useState(0);
   const reload = useCallback(() => setTick((n) => n + 1), []);
+  const [follow, setFollow] = useState(getLocationFollow() === "on");
+
+  const toggleFollow = async (on: boolean) => {
+    setFollow(on);
+    setLocationFollow(on ? "on" : "off");
+    setMessage(null);
+    try {
+      if (on && userId) {
+        const r = await syncLocation(userId);
+        setMessage(r ? (r.changed ? S.locUpdated.replace("{country}", r.country).replace("{currency}", r.currency ?? "—") : S.locCountry.replace("{country}", r.country)) : S.locFailed);
+      } else if (!on) {
+        await clearLocation();
+      }
+      reload();
+    } catch (e) {
+      setMessage(e instanceof Error && e.message === "denied" ? S.locDenied : S.locFailed);
+      if (e instanceof Error && e.message === "denied") { setFollow(false); setLocationFollow("off"); }
+    }
+  };
 
   useEffect(() => {
     if (!userId) return;
@@ -163,6 +183,13 @@ export function Settings({ D, locale, setLocale, userId, onBack, onLogoClick }: 
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {LANGUAGES.map((l) => <button key={l.id} type="button" className={locale === l.id ? "btn btn-primary" : "btn btn-ghost"} onClick={() => setLocale(l.id)}>{l.label}</button>)}
               </div>
+            </div>
+            <div className="card elev-sm" style={{ gap: 8 }}>
+              <div className="card-title">{S.locTitle}</div>
+              <p className="card-body">{S.locDesc}{profile?.locationCountry ? ` ${S.locCountry.replace("{country}", profile.locationCountry)}` : ""}</p>
+              <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input type="checkbox" checked={follow} onChange={(e) => void toggleFollow(e.target.checked)} /> {S.locTitle}
+              </label>
             </div>
             <div className="card elev-sm" style={{ gap: 8 }}>
               <div className="card-title">{S.fxCurrencyLabel}</div>

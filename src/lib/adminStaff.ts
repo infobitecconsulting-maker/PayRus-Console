@@ -224,3 +224,53 @@ export const APP_FEATURES: { key: string; label: string }[] = [
 ];
 export const CONSOLE_ROLES = ["Personal", "Merchant", "Agent", "Treasury", "Institution", "NGO", "Group", "Other"];
 export const CONSOLE_TABS = ["overview", "transactions", "payouts", "merchants", "agents", "mandates", "grants", "members"];
+
+// ---- AI-assisted escalation triage (0027 + App/convex/aiSupportAssist.ts) ----
+export type TriageAction = "approve" | "reject" | "request_info";
+export interface AiSuggestion {
+  id: string; escalationId: string; source: "ai" | "rules"; priority: "low" | "medium" | "high" | "urgent"; category: string;
+  summary: string; recommendedAction: TriageAction; rationale: string; draftReply: string; confidence: number;
+  status: "suggested" | "used" | "dismissed"; createdAt: string; createdByName: string | null;
+}
+
+const toSuggestion = (r: Record<string, unknown>): AiSuggestion => ({
+  id: r.id as string, escalationId: r.escalation_id as string, source: r.source as AiSuggestion["source"], priority: r.priority as AiSuggestion["priority"],
+  category: r.category as string, summary: r.summary as string, recommendedAction: r.recommended_action as TriageAction, rationale: r.rationale as string,
+  draftReply: r.draft_reply as string, confidence: Number(r.confidence), status: r.status as AiSuggestion["status"], createdAt: r.created_at as string,
+  createdByName: (r.created_by_name as string) ?? null,
+});
+
+export async function listAiSuggestions(): Promise<AiSuggestion[]> {
+  return (rows(await supabase.rpc("support_list_ai_suggestions"), "listAiSuggestions") as Record<string, unknown>[]).map(toSuggestion);
+}
+
+export async function markAiSuggestion(id: string, status: "used" | "dismissed"): Promise<void> {
+  done(await supabase.rpc("support_mark_ai_suggestion", { p_suggestion_id: id, p_status: status }), "markAiSuggestion");
+}
+
+// AI first (Claude via the Convex endpoint, using this user's own session);
+// falls back to the in-database rules triage when AI is not configured.
+export async function runTriage(escalationId: string): Promise<{ suggestion: AiSuggestion; via: "ai" | "rules"; fallbackReason?: string }> {
+  const site = import.meta.env.VITE_CONVEX_SITE_URL as string | undefined;
+  let fallbackReason = "AI is not configured";
+  if (site) {
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (token) {
+        const res = await fetch(`${site}/aiSupportAssist`, {
+          method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ escalationId }),
+        });
+        const body = (await res.json().catch(() => ({}))) as { suggestion?: Record<string, unknown>; error?: string; message?: string };
+        if (res.ok && body.suggestion) return { suggestion: toSuggestion(body.suggestion), via: "ai" };
+        if (res.status === 403 || res.status === 401) throw new Error(body.message ?? "Not permitted");
+        fallbackReason = body.error === "not_configured" ? "AI is not configured" : "AI is unavailable";
+      }
+    } catch (e) {
+      if (e instanceof Error && /permitted|permission|forbidden/i.test(e.message)) throw e;
+      fallbackReason = "AI is unreachable";
+    }
+  }
+  const r = await supabase.rpc("support_rules_triage", { p_escalation_id: escalationId });
+  if (r.error || !r.data) throw new Error(r.error?.message ?? "triage failed");
+  return { suggestion: toSuggestion(r.data as Record<string, unknown>), via: "rules", fallbackReason };
+}

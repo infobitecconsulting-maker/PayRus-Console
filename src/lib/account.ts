@@ -34,8 +34,9 @@ async function ratePerUsd(codes: string[]): Promise<Record<string, number>> {
 export async function loadFxSnapshot(userId: string | null): Promise<FxSnapshot> {
   let local = getPreferredFxCurrency();
   if (!local && userId) {
-    const u = await supabase.from("users").select("default_currency").eq("id", userId).maybeSingle();
-    local = (u.data?.default_currency as string | null) ?? null;
+    // Transaction currency: the live-location currency when set, else the registration currency.
+    const u = await supabase.from("users").select("default_currency, location_currency").eq("id", userId).maybeSingle();
+    local = ((u.data?.location_currency as string | null) ?? (u.data?.default_currency as string | null)) ?? null;
   }
   if (!local) {
     const region = navigator.language.split("-")[1]?.toUpperCase();
@@ -64,6 +65,7 @@ export async function listCurrencyCodes(): Promise<string[]> {
 export interface MyProfile {
   id: string; name: string | null; email: string | null; username: string | null; phone: string | null;
   country: string | null; defaultCurrency: string | null; kycStatus: string; roles: { role: string; status: string }[];
+  locationCountry: string | null;
 }
 
 export async function loadMyProfile(userId: string): Promise<MyProfile> {
@@ -77,6 +79,7 @@ export async function loadMyProfile(userId: string): Promise<MyProfile> {
     id: row.id as string, name: (row.name as string) ?? null, email: (row.email as string) ?? null, username: (row.username as string) ?? null,
     phone: (row.phone as string) ?? null, country: (row.country as string) ?? null, defaultCurrency: (row.default_currency as string) ?? null,
     kycStatus: row.kyc_status as string, roles: (r.data ?? []).map((x) => ({ role: x.role as string, status: x.status as string })),
+    locationCountry: (row.location_country as string) ?? null,
   };
 }
 

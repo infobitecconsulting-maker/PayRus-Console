@@ -2,12 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import type { AdminPageCopy, Desk, Locale } from "../types.ts";
 import { BackButton, LocaleMenu, PayRusLogo } from "../components/parts.tsx";
 import {
-  getMyPermissions, listUsers, updateUser, listTransfers, completeTransfer, resolveTransfer, voidTransfer, createAdjustment,
-  listEscalations, requestEscalation, resolveEscalation, listStaffRoles, listMatrix, setPermission, assignStaffRole, revokeStaffRole,
-  errorText, type MyPermissions, type StaffUser, type StaffTransfer, type StaffEscalation, type StaffRole, type MatrixRow, type EscalationAction,
+  getMyPermissions, listUsers, updateUser, listTransfers, requestEscalation, completeTransfer, resolveTransfer, voidTransfer, createAdjustment,
+  listStaffRoles, listMatrix, setPermission, assignStaffRole, revokeStaffRole,
+  errorText, type MyPermissions, type StaffUser, type StaffTransfer, type StaffRole, type MatrixRow, type EscalationAction,
   updateRoleStatus,
 } from "../lib/adminStaff.ts";
 import { AccessTab, AddProfile, AuditTab, GatePassword } from "./AdminExtras.tsx";
+import { EscalationsTab } from "./AdminEscalations.tsx";
 
 type TabId = "users" | "transactions" | "escalations" | "staff" | "access" | "audit";
 
@@ -93,7 +94,6 @@ export function Admin({ D, locale, setLocale, onBack, onLogoClick }: {
   const [message, setMessage] = useState<string | null>(null);
   const [users, setUsers] = useState<StaffUser[] | null>(null);
   const [transfers, setTransfers] = useState<StaffTransfer[] | null>(null);
-  const [escalations, setEscalations] = useState<StaffEscalation[] | null>(null);
   const [roles, setRoles] = useState<StaffRole[]>([]);
   const [matrix, setMatrix] = useState<MatrixRow[]>([]);
   const [callerId, setCallerId] = useState("");
@@ -111,7 +111,6 @@ export function Admin({ D, locale, setLocale, onBack, onLogoClick }: {
   useEffect(() => { void getMyPermissions().then(setPerms).catch(() => setPerms(null)); }, [tick]);
   useEffect(() => { void listUsers().then(setUsers).catch((e) => { setUsers([]); fail(e); }); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [tick]);
   useEffect(() => { void listTransfers(callerId || undefined).then(setTransfers).catch((e) => { setTransfers([]); fail(e); }); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [tick, callerId]);
-  useEffect(() => { void listEscalations().then(setEscalations).catch(() => setEscalations([])); }, [tick]);
   useEffect(() => { void listStaffRoles().then(setRoles).catch(() => setRoles([])); void listMatrix().then(setMatrix).catch(() => setMatrix([])); }, [tick]);
 
   const run = async (action: () => Promise<void>, ok: string) => {
@@ -287,41 +286,7 @@ export function Admin({ D, locale, setLocale, onBack, onLogoClick }: {
           </div>
         )}
 
-        {tab === "escalations" && (
-          <div style={{ display: "grid", gap: "var(--space-3)" }}>
-            {escalations === null && <div className="tag tag-neutral">{A.loading}</div>}
-            {escalations && escalations.length === 0 && <div className="text-muted">{A.empty}</div>}
-            {escalations?.map((e) => (
-              <div key={e.id} className="card elev-sm" style={{ gap: 6 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-                  <div>
-                    <div className="card-title" style={{ textTransform: "capitalize" }}>{e.action.replace("_", " ")}{e.amount != null ? ` · ${e.amount.toLocaleString()} ${e.currency ?? ""}` : ""}</div>
-                    <div className="text-muted" style={{ fontSize: 12 }}>{e.targetName ?? e.targetEmail ?? "—"}{e.transferReference ? ` · ${e.transferReference}` : ""} · {e.requesterName ?? "—"} · {new Date(e.createdAt).toLocaleString()}</div>
-                  </div>
-                  <span style={STATE_CHIP[e.status] ?? chip("#F1F4F7", "#4A5A6A")}>{e.status}</span>
-                </div>
-                <div>{e.details}</div>
-                {e.resolutionNote && <div className="text-muted" style={{ fontSize: 12 }}>{e.resolutionNote}</div>}
-                {canUpdate && (e.status === "open" || e.status === "approved") && (
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {e.status === "open" && (
-                      <>
-                        <button type="button" className="btn btn-primary" onClick={() => {
-                          const n = window.prompt(A.notePrompt); if (n === null) return;
-                          let p: string | undefined;
-                          if (e.action === "void") { const v = window.prompt(A.passwordPrompt); if (v === null) return; p = v; }
-                          void run(() => resolveEscalation(e.id, "approve", n || undefined, p), A.approve);
-                        }}>{A.approve}</button>
-                        <button type="button" className="btn btn-ghost" onClick={() => { const n = window.prompt(A.reasonPrompt); if (n !== null) void run(() => resolveEscalation(e.id, "reject", n || undefined), A.reject); }}>{A.reject}</button>
-                      </>
-                    )}
-                    {e.status === "approved" && <button type="button" className="btn btn-ghost" onClick={() => void run(() => resolveEscalation(e.id, "done"), A.markDone)}>{A.markDone}</button>}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        {tab === "escalations" && <EscalationsTab A={A} perms={perms} notify={setMessage} />}
 
         {tab === "access" && perms?.isAdmin && <AccessTab A={A} users={users ?? []} notify={setMessage} reload={reload} />}
         {tab === "audit" && perms?.isAdmin && <AuditTab A={A} />}

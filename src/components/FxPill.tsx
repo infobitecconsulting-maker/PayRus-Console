@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { SettingsCopy } from "../types.ts";
 import { loadFxSnapshot, type FxSnapshot } from "../lib/account.ts";
+import { getLocationFollow, locationCheckIsDue, syncLocation } from "../lib/location.ts";
 
 const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: n >= 100 ? 2 : 4 });
 
@@ -8,6 +9,13 @@ const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 
 export function FxPill({ S, userId }: { S: SettingsCopy; userId: string | null }) {
   const [snap, setSnap] = useState<FxSnapshot | null>(null);
   const [failed, setFailed] = useState(false);
+
+  // Follow-my-location (opt-in, Settings): refresh the stored country at most
+  // every 6 hours; the pill then re-reads the user's transaction currency.
+  useEffect(() => {
+    if (!userId || getLocationFollow() !== "on" || !locationCheckIsDue()) return;
+    void syncLocation(userId).then((r) => { if (r?.changed) window.dispatchEvent(new Event("payrus-fx-currency")); }).catch(() => undefined);
+  }, [userId]);
 
   useEffect(() => {
     let cancelled = false;

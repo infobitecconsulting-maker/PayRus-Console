@@ -6,6 +6,7 @@ import { OAUTH_PROVIDERS, signInWithOAuthProvider, type OAuthProviderId } from "
 import { COUNTRY_OPTIONS, callingCodeForCountry } from "../lib/geo.ts";
 import { citiesForCountry, provincesForCountry } from "../lib/address.ts";
 import { suggestPostalCodes, suggestStreets, type PostalCodeSuggestion } from "../lib/addressSuggestions.ts";
+import { getBrowserPosition, reverseGeocode } from "../lib/location.ts";
 
 type Step = "details" | "checkEmail";
 
@@ -54,6 +55,10 @@ export function Register({
   const [postalCodeSuggestions, setPostalCodeSuggestions] = useState<PostalCodeSuggestion[]>([]);
   const [postalCodeSuggestOpen, setPostalCodeSuggestOpen] = useState(false);
   const lastPostalLookupRef = useRef("");
+  const [area, setArea] = useState("");
+  const [postalLoading, setPostalLoading] = useState(false);
+  const [postalLooked, setPostalLooked] = useState(false);
+  const [locating, setLocating] = useState(false);
 
   // AI-backed street autosuggest — same trigger conditions as App/'s
   // register page: only once country+city+province are all chosen, and only
@@ -62,13 +67,13 @@ export function Register({
   const handleStreetChange = (value: string) => {
     setStreet(value);
     if (streetDebounceRef.current) clearTimeout(streetDebounceRef.current);
-    if (!country || !city.trim() || !province || value.trim().length < 2) {
+    if (!country || !city.trim() || value.trim().length < 2) {
       setStreetSuggestions([]);
       setStreetSuggestOpen(false);
       return;
     }
     streetDebounceRef.current = setTimeout(async () => {
-      const suggestions = await suggestStreets({ country, city: city.trim(), province, query: value.trim() });
+      const suggestions = await suggestStreets({ country, city: city.trim(), province: province || undefined, query: value.trim() });
       setStreetSuggestions(suggestions);
       setStreetSuggestOpen(suggestions.length > 0);
     }, 400);
@@ -85,25 +90,59 @@ export function Register({
   // request from a since-changed combo clobbering a newer result.
   useEffect(() => {
     const trimmedCity = city.trim();
-    if (!country || !trimmedCity || !province) {
+    // Country + city are enough (province optional): list that city's postal
+    // codes and areas from the live address database.
+    if (!country || !trimmedCity) {
       setPostalCodeSuggestions([]);
       setPostalCodeSuggestOpen(false);
+      setPostalLoading(false);
+      setPostalLooked(false);
+      lastPostalLookupRef.current = "";
       return;
     }
     const key = `${country}|${trimmedCity}|${province}`;
     if (lastPostalLookupRef.current === key) return;
     lastPostalLookupRef.current = key;
+    setPostalLoading(true);
+    setPostalLooked(false);
     void (async () => {
-      const suggestions = await suggestPostalCodes({ country, city: trimmedCity, province });
+      const suggestions = await suggestPostalCodes({ country, city: trimmedCity, province: province || undefined });
       if (lastPostalLookupRef.current !== key) return;
       setPostalCodeSuggestions(suggestions);
       setPostalCodeSuggestOpen(suggestions.length > 0);
+      setPostalLoading(false);
+      setPostalLooked(true);
     })();
   }, [country, city, province]);
 
   const handlePickPostalCode = (suggestion: PostalCodeSuggestion) => {
-    setPostalCode(suggestion.postalCode);
+    if (suggestion.postalCode) setPostalCode(suggestion.postalCode);
+    if (suggestion.area) setArea(suggestion.area);
     setPostalCodeSuggestOpen(false);
+  };
+
+  // "Use my current location": position -> reverse geocode (server-side, never
+  // stored) -> pre-fill country, province, city, area and postal code.
+  const handleUseLocation = async () => {
+    setLocating(true);
+    setError(null);
+    try {
+      const pos = await getBrowserPosition();
+      const place = await reverseGeocode(pos.lat, pos.lng);
+      if (!place) { setError(D.settings.locFailed); return; }
+      setCountry(place.country);
+      const match = (list: string[], value?: string) => list.find((x) => x.toLowerCase() === value?.toLowerCase());
+      const provinces = provincesForCountry(place.country);
+      const cities = citiesForCountry(place.country);
+      setProvince(provinces.length > 0 ? (match(provinces, place.province) ?? "") : (place.province ?? ""));
+      setCity(cities.length > 0 ? (match(cities, place.city) ?? "") : (place.city ?? ""));
+      if (place.postalCode) setPostalCode(place.postalCode);
+      if (place.area) setArea(place.area);
+    } catch (e) {
+      setError(e instanceof Error && e.message === "denied" ? D.settings.locDenied : D.settings.locFailed);
+    } finally {
+      setLocating(false);
+    }
   };
 
   const handleOAuthClick = async (provider: OAuthProviderId) => {
@@ -143,7 +182,7 @@ export function Register({
         options: {
           data: {
             firstName: firstName.trim(), lastName: lastName.trim(), phone: phone.trim(), country,
-            street: street.trim(), houseNumber: houseNumber.trim(), city: city.trim(), province,
+            street: [street.trim(), area.trim() && !street.toLowerCase().includes(area.trim().toLowerCase()) ? area.trim() : ""].filter(Boolean).join(", "), houseNumber: houseNumber.trim(), city: city.trim(), province,
             postalCode: postalCode.trim() || undefined,
           },
         },
@@ -209,6 +248,11 @@ export function Register({
             <div style={fieldWrap(2)} className="field">
               <label htmlFor="reg-email">{R.email}</label>
               <input className="input" id="reg-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={fieldStyle} />
+            </div>
+            <div style={fieldWrap(2)}>
+              <button type="button" className="btn btn-ghost" disabled={locating} onClick={() => void handleUseLocation()}>
+                {locating ? "…" : "📍 " + D.settings.locBtn}
+              </button>
             </div>
             <div style={fieldWrap(2)} className="field">
               <label htmlFor="reg-country">{R.country}</label>
@@ -343,7 +387,7 @@ export function Register({
                 >
                   {postalCodeSuggestions.map((s) => (
                     <button
-                      key={s.postalCode}
+                      key={s.postalCode || s.area}
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handlePickPostalCode(s)}
@@ -352,12 +396,18 @@ export function Register({
                         background: "none", border: 0, padding: "8px 12px", cursor: "pointer", fontSize: 13, textAlign: "left",
                       }}
                     >
-                      <span style={{ color: "var(--auth-navy)", fontWeight: 600 }}>{s.postalCode}</span>
-                      {s.area && <span style={{ color: "var(--auth-body)", fontSize: 11 }}>{s.area}</span>}
+                      <span style={{ color: "var(--auth-navy)", fontWeight: 600 }}>{s.postalCode || s.area}</span>
+                      {s.postalCode && s.area && <span style={{ color: "var(--auth-body)", fontSize: 11 }}>{s.area}</span>}
                     </button>
                   ))}
                 </div>
               )}
+              {postalLoading && <span style={{ fontSize: 11, color: "var(--auth-body)" }}>{D.settings.postalLooking}</span>}
+              {!postalLoading && postalLooked && postalCodeSuggestions.length === 0 && <span style={{ fontSize: 11, color: "var(--auth-body)" }}>{D.settings.postalNone}</span>}
+            </div>
+            <div style={fieldWrap(2)} className="field">
+              <label htmlFor="reg-area">{D.settings.areaLabel}</label>
+              <input className="input" id="reg-area" value={area} onChange={(e) => setArea(e.target.value)} autoComplete="off" style={fieldStyle} />
             </div>
             <div style={fieldWrap()} className="field">
               <label htmlFor="reg-password">{R.password}</label>
