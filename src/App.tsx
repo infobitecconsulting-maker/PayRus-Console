@@ -12,10 +12,11 @@ import { Kyc } from "./screens/Kyc.tsx";
 import { Console } from "./screens/Console.tsx";
 import { Config } from "./screens/Config.tsx";
 import { Admin } from "./screens/Admin.tsx";
+import { Settings } from "./screens/Settings.tsx";
 import { getMyPermissions } from "./lib/adminStaff.ts";
 import { RegisterCustomer } from "./screens/RegisterCustomer.tsx";
 
-type Stage = "landing" | "welcome" | "register" | "profile" | "kyc" | "app" | "config" | "admin" | "registerCustomer";
+type Stage = "landing" | "welcome" | "register" | "profile" | "kyc" | "app" | "config" | "admin" | "settings" | "registerCustomer";
 type AuthSession = { user: { id: string; email?: string; user_metadata?: Record<string, unknown> } } | null;
 
 export default function App() {
@@ -273,8 +274,14 @@ export default function App() {
           onOpenConfig={() => go("config")}
           canAdminister={canAdminister}
           onOpenAdmin={() => go("admin")}
+          userId={userId}
+          onOpenSettings={() => go("settings")}
           onOpenRegisterCustomer={() => go("registerCustomer")}
         />
+      )}
+
+      {stage === "settings" && (
+        <Settings D={D} locale={locale} setLocale={setLocale} userId={userId} onBack={goBack} onLogoClick={goToLogo} />
       )}
 
       {stage === "admin" && (

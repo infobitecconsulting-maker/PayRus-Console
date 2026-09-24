@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { Desk, LedgerRow, Locale, Role, TabKey } from "../types.ts";
 import { TAB_KEYS, fmtNum } from "../data.ts";
 import { fetchConsoleData, type ConsoleData } from "../lib/backend.ts";
+import { FxPill } from "../components/FxPill.tsx";
 import { BackButton, BarChart, FxTable, KpiTile, LedgerTable, LocaleMenu, PayRusLogo, PositionCard, QueueCard, SegGroup } from "../components/parts.tsx";
 
 const STATE_KEYS = ["All", "Settled", "Pending", "Failed"] as const;
@@ -26,6 +27,8 @@ export function Console({
   onOpenRegisterCustomer,
   canAdminister,
   onOpenAdmin,
+  userId,
+  onOpenSettings,
 }: {
   D: Desk;
   locale: Locale;
@@ -45,6 +48,8 @@ export function Console({
   onOpenConfig: () => void;
   canAdminister: boolean;
   onOpenAdmin: () => void;
+  userId: string | null;
+  onOpenSettings: () => void;
   onOpenRegisterCustomer: () => void;
 }) {
   const [data, setData] = useState<ConsoleData | null>(null);
@@ -132,12 +137,7 @@ export function Console({
         </div>
         <div className="pr-ids">
           <LocaleMenu value={locale} onChange={setLocale} variant="console" />
-          <span className="tag tag-neutral" style={{ whiteSpace: "nowrap" }}>
-            {D.pilotClient}
-          </span>
-          <span className="tag tag-accent-2" style={{ whiteSpace: "nowrap" }}>
-            {D.pilotBadge}
-          </span>
+          <FxPill S={D.settings} userId={userId} />
           <span className="tag tag-outline" style={{ whiteSpace: "nowrap" }}>
             {isAdmin ? "Admin" : profile}
           </span>
@@ -146,6 +146,9 @@ export function Console({
               {D.registerCustomerButton}
             </button>
           )}
+          <button type="button" className="btn btn-ghost" onClick={onOpenSettings}>
+            {D.settings.button}
+          </button>
           {canAdminister && (
             <button type="button" className="btn btn-ghost" onClick={onOpenAdmin}>
               {D.adminPage.button}

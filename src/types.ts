@@ -134,6 +134,64 @@ export interface KycCopy {
 // editing, a manual live-rate refresh trigger, and the blocked-transfer /
 // pending-profile recovery tools from supabase/migrations/
 // 0013_fx_margin_config_and_live_rates.sql.
+export interface SettingsCopy {
+  button: string;
+  headline: string;
+  subtitle: string;
+  secProfile: string;
+  secSecurity: string;
+  secNotifications: string;
+  secAppearance: string;
+  secPayments: string;
+  secPrivacy: string;
+  secAbout: string;
+  name: string;
+  email: string;
+  username: string;
+  phone: string;
+  country: string;
+  currency: string;
+  kyc: string;
+  roles: string;
+  notSet: string;
+  save: string;
+  saved: string;
+  saveFailed: string;
+  changePassword: string;
+  newPassword: string;
+  confirmPassword: string;
+  updatePassword: string;
+  passwordUpdated: string;
+  passwordMismatch: string;
+  passwordShort: string;
+  signOutOthers: string;
+  signOutOthersDesc: string;
+  signedOutOthers: string;
+  noNotifications: string;
+  markRead: string;
+  unread: string;
+  languageLabel: string;
+  fxCurrencyLabel: string;
+  fxCurrencyDesc: string;
+  fxAuto: string;
+  wallets: string;
+  cards: string;
+  noWallets: string;
+  exportData: string;
+  exportDesc: string;
+  download: string;
+  privacyNote: string;
+  fxTickerTitle: string;
+  fxUpdated: string;
+  fxAttribution: string;
+  version: string;
+  loading: string;
+  fxLive: string;
+  fxTitle: string;
+  fxTitleNoTime: string;
+  fxUnavailable: string;
+}
+
 export interface AdminPageCopy {
   button: string;
   headline: string;
@@ -367,6 +425,7 @@ export interface Desk {
   landing: LandingCopy;
   register: RegisterCopy;
   kyc: KycCopy;
+  settings: SettingsCopy;
   adminPage: AdminPageCopy;
   config: ConfigCopy;
   registerCustomer: RegisterCustomerCopy;
