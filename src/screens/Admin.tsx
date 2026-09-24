@@ -9,8 +9,11 @@ import {
 } from "../lib/adminStaff.ts";
 import { AccessTab, AddProfile, AuditTab, GatePassword } from "./AdminExtras.tsx";
 import { EscalationsTab } from "./AdminEscalations.tsx";
+import { RemittanceTab } from "./AdminRemittance.tsx";
 
-type TabId = "users" | "transactions" | "escalations" | "staff" | "access" | "audit";
+const REMITTANCE_TAB: Record<Locale, string> = { en: "Remittances", fr: "Transferts", pt: "Remessas", es: "Remesas" };
+
+type TabId = "users" | "transactions" | "remittance" | "escalations" | "staff" | "access" | "audit";
 
 const COMPLETABLE = ["pending", "failed", "submitted", "confirming", "partner_accepted"];
 const REFUNDABLE = ["disputed", "refund_pending", "reversed"];
@@ -161,7 +164,7 @@ export function Admin({ D, locale, setLocale, onBack, onLogoClick }: {
         <p className="text-muted" style={{ marginBottom: "var(--space-4)" }}>{A.subtitle}</p>
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: "var(--space-4)" }}>
-          {tabBtn("users", A.tabUsers)}{tabBtn("transactions", A.tabTransactions)}{tabBtn("escalations", A.tabEscalations)}{tabBtn("staff", A.tabStaff)}
+          {tabBtn("users", A.tabUsers)}{tabBtn("transactions", A.tabTransactions)}{tabBtn("remittance", REMITTANCE_TAB[locale] ?? REMITTANCE_TAB.en)}{tabBtn("escalations", A.tabEscalations)}{tabBtn("staff", A.tabStaff)}
           {perms?.isAdmin && tabBtn("access", A.tabAccess)}{perms?.isAdmin && tabBtn("audit", A.tabAudit)}
         </div>
 
@@ -285,6 +288,8 @@ export function Admin({ D, locale, setLocale, onBack, onLogoClick }: {
             ))}
           </div>
         )}
+
+        {tab === "remittance" && (transfers === null ? <div className="tag tag-neutral">{A.loading}</div> : <RemittanceTab transfers={transfers} locale={locale} perms={perms} notify={setMessage} />)}
 
         {tab === "escalations" && <EscalationsTab A={A} perms={perms} notify={setMessage} />}
 
