@@ -6,6 +6,7 @@ import {
   loadMyProfile, markNotificationRead, setPreferredFxCurrency, signOutOtherDevices, updateMyProfile,
   type FxSnapshot, type MyCard, type MyNotification, type MyProfile, type MyWallet,
 } from "../lib/account.ts";
+import { MfaSettingsCard } from "../components/Mfa.tsx";
 import { clearLocation, getLocationFollow, setLocationFollow, syncLocation } from "../lib/location.ts";
 
 type Section = "profile" | "security" | "notifications" | "appearance" | "payments" | "privacy" | "about";
@@ -143,6 +144,7 @@ export function Settings({ D, locale, setLocale, userId, onBack, onLogoClick }: 
 
         {section === "security" && (
           <div style={{ display: "grid", gap: "var(--space-4)" }}>
+            <MfaSettingsCard locale={locale} onMessage={setMessage} />
             <div className="card elev-sm" style={{ gap: 8 }}>
               <div className="card-title">{S.changePassword}</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 8 }}>

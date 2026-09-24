@@ -18,8 +18,11 @@ import { RegisterCustomer } from "./screens/RegisterCustomer.tsx";
 import Organisation from "./screens/Organisation.tsx";
 import { Send } from "./screens/Send.tsx";
 import { myMemberships } from "./lib/org.ts";
+import { needsMfaChallenge } from "./lib/mfa.ts";
+import { MfaGate } from "./screens/MfaGate.tsx";
+import { MfaStepUpHost } from "./components/Mfa.tsx";
 
-type Stage = "send" | "organisation" | "landing" | "welcome" | "register" | "profile" | "kyc" | "app" | "config" | "admin" | "settings" | "registerCustomer";
+type Stage = "mfa" | "send" | "organisation" | "landing" | "welcome" | "register" | "profile" | "kyc" | "app" | "config" | "admin" | "settings" | "registerCustomer";
 type AuthSession = { user: { id: string; email?: string; user_metadata?: Record<string, unknown> } } | null;
 
 export default function App() {
@@ -30,6 +33,8 @@ export default function App() {
   const [userId, setUserId] = useState<string | null>(null);
   const [pendingRole, setPendingRole] = useState<Role | null>(null);
   const settledRef = useRef(false);
+  // Session that passed the password step but still owes a TOTP code (AAL1 -> AAL2).
+  const mfaSessionRef = useRef<AuthSession>(null);
 
   const [profile, setProfile] = useState<Role>("Treasury");
   // Mirrors App/'s isAdmin bypass — App/'s "admin" user_roles.role has no
@@ -61,6 +66,13 @@ export default function App() {
   // handlers, for password sign-in and fresh sign-up).
   const resolveIdentityAndRoute = async (session: AuthSession) => {
     if (!session?.user?.email || settledRef.current) return;
+    // PRS-IAM-003: an account with a verified TOTP factor must reach AAL2 before it is routed in.
+    if (await needsMfaChallenge()) {
+      mfaSessionRef.current = session;
+      setStage("mfa");
+      return;
+    }
+    if (settledRef.current) return;
     settledRef.current = true;
     setIsAuthenticated(true);
     try {
@@ -211,6 +223,7 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--color-bg)" }}>
+      <MfaStepUpHost locale={locale} />
       {stage === "landing" && (
         <Landing
           D={D}
@@ -248,6 +261,17 @@ export default function App() {
 
       {stage === "profile" && (
         <ProfilePicker D={D} onBack={goBack} onPick={pickRole} onPickAdmin={pickAdmin} />
+      )}
+
+      {stage === "mfa" && (
+        <MfaGate
+          D={D}
+          locale={locale}
+          setLocale={setLocale}
+          onVerified={() => void resolveIdentityAndRoute(mfaSessionRef.current)}
+          onCancel={() => { mfaSessionRef.current = null; void supabase.auth.signOut(); setStage("welcome"); }}
+          onLogoClick={goToLogo}
+        />
       )}
 
       {stage === "kyc" && pendingRole && (

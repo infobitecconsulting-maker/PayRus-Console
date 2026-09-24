@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { requireStepUp } from "../lib/mfa.ts";
+import { mfaCopy } from "../components/Mfa.tsx";
 import type { Desk, Locale } from "../types.ts";
 import { BackButton, LocaleMenu, PayRusLogo } from "../components/parts.tsx";
 import {
@@ -76,6 +78,7 @@ export function Send({ D, locale, setLocale, userId, onBack, onLogoClick }: { D:
 
   const confirm = async () => {
     if (!userId || !to) return;
+    if (!(await requireStepUp())) { setMessage(mfaCopy(locale).codeInvalid); return; }
     setBusy(true); setMessage(null);
     try {
       setReceipt(await sendP2p({ senderId: userId, recipientId: to.id, amount: amt, currency, note: note.trim() || undefined }));
