@@ -5,9 +5,11 @@ import {
   getMyPermissions, listUsers, updateUser, listTransfers, completeTransfer, resolveTransfer, voidTransfer, createAdjustment,
   listEscalations, requestEscalation, resolveEscalation, listStaffRoles, listMatrix, setPermission, assignStaffRole, revokeStaffRole,
   errorText, type MyPermissions, type StaffUser, type StaffTransfer, type StaffEscalation, type StaffRole, type MatrixRow, type EscalationAction,
+  updateRoleStatus,
 } from "../lib/adminStaff.ts";
+import { AccessTab, AddProfile, AuditTab, GatePassword } from "./AdminExtras.tsx";
 
-type TabId = "users" | "transactions" | "escalations" | "staff";
+type TabId = "users" | "transactions" | "escalations" | "staff" | "access" | "audit";
 
 const COMPLETABLE = ["pending", "failed", "submitted", "confirming", "partner_accepted"];
 const REFUNDABLE = ["disputed", "refund_pending", "reversed"];
@@ -161,6 +163,7 @@ export function Admin({ D, locale, setLocale, onBack, onLogoClick }: {
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: "var(--space-4)" }}>
           {tabBtn("users", A.tabUsers)}{tabBtn("transactions", A.tabTransactions)}{tabBtn("escalations", A.tabEscalations)}{tabBtn("staff", A.tabStaff)}
+          {perms?.isAdmin && tabBtn("access", A.tabAccess)}{perms?.isAdmin && tabBtn("audit", A.tabAudit)}
         </div>
 
         {message && <div className="tag tag-neutral" role="status" style={{ marginBottom: "var(--space-3)" }}>{message}</div>}
@@ -173,6 +176,7 @@ export function Admin({ D, locale, setLocale, onBack, onLogoClick }: {
 
         {tab === "users" && (
           <div style={{ display: "grid", gap: "var(--space-3)" }}>
+            {perms?.isAdmin && perms.users.update && <AddProfile A={A} notify={setMessage} reload={reload} />}
             {users === null && <div className="tag tag-neutral">{A.loading}</div>}
             {users && shownUsers.length === 0 && <div className="text-muted">{A.empty}</div>}
             {shownUsers.map((u) => (
@@ -182,9 +186,18 @@ export function Admin({ D, locale, setLocale, onBack, onLogoClick }: {
                     <div className="card-title">{u.name ?? "—"}</div>
                     <div className="text-muted" style={{ fontSize: 12 }}>{u.email ?? "—"}{u.username ? ` · @${u.username}` : ""}</div>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
-                      {u.roles.map((r) => <span key={r.id} style={chip("#E7EEF7", "#1D3F6B")}>{r.role.replace("_", " ")} · {r.status.replace("_", " ")}</span>)}
+                      {u.roles.map((r) => perms?.users.update ? (
+                        <span key={r.id} style={{ ...chip("#E7EEF7", "#1D3F6B"), display: "inline-flex", gap: 4, alignItems: "center" }}>
+                          {r.role.replace("_", " ")}
+                          <select aria-label={`${A.roleStatus}: ${r.role}`} value={r.status} style={{ font: "inherit", border: 0, background: "transparent", color: "inherit" }}
+                            onChange={(e) => void run(() => updateRoleStatus(r.id, e.target.value as "incomplete" | "pending_verification" | "verified"), A.saved)}>
+                            <option value="incomplete">incomplete</option><option value="pending_verification">pending verification</option><option value="verified">verified</option>
+                          </select>
+                        </span>
+                      ) : <span key={r.id} style={chip("#E7EEF7", "#1D3F6B")}>{r.role.replace("_", " ")} · {r.status.replace("_", " ")}</span>)}
                       <span style={chip("#F1F4F7", "#4A5A6A")}>KYC {u.kycStatus}</span>
                     </div>
+                    {u.wallets.length > 0 && <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>{A.walletsLabel}: {u.wallets.map((w) => `${w.balance.toLocaleString()} ${w.currency}`).join(" · ")}</div>}
                   </div>
                   <div style={{ display: "flex", gap: 6, alignItems: "flex-start", flexWrap: "wrap" }}>
                     <button type="button" className="btn btn-ghost" onClick={() => { setCallerId(u.id); setTab("transactions"); }}>{A.tabTransactions}</button>
@@ -310,6 +323,9 @@ export function Admin({ D, locale, setLocale, onBack, onLogoClick }: {
           </div>
         )}
 
+        {tab === "access" && perms?.isAdmin && <AccessTab A={A} users={users ?? []} notify={setMessage} reload={reload} />}
+        {tab === "audit" && perms?.isAdmin && <AuditTab A={A} />}
+
         {tab === "staff" && (
           <div style={{ display: "grid", gap: "var(--space-4)" }}>
             {!isSuper && <div className="tag tag-neutral">{A.readOnlyNote}</div>}
@@ -357,6 +373,7 @@ export function Admin({ D, locale, setLocale, onBack, onLogoClick }: {
               <div className="text-muted" style={{ fontSize: 12 }}>{A.deleteNote}</div>
             </div>
 
+            {isSuper && <GatePassword A={A} notify={setMessage} />}
             {isSuper && (
               <div className="card elev-sm" style={{ gap: 8 }}>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

@@ -36,6 +36,8 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   // True when the account holds a staff role or admin tier (any read right).
   const [canAdminister, setCanAdminister] = useState(false);
+  // Admin tier (admin or superadmin, from the database) unlocks Configuration.
+  const [canConfigure, setCanConfigure] = useState(false);
   const [tabIx, setTabIx] = useState(0);
   const [rangeIx, setRangeIx] = useState(0);
   const [filterIx, setFilterIx] = useState(0);
@@ -114,8 +116,8 @@ export default function App() {
   useEffect(() => {
     if (stage !== "app" || !isAuthenticated) return;
     void getMyPermissions()
-      .then((p) => setCanAdminister(p.isSuperadmin || p.users.read || p.transactions.read))
-      .catch(() => setCanAdminister(false));
+      .then((p) => { setCanAdminister(p.isSuperadmin || p.users.read || p.transactions.read); setCanConfigure(p.isAdmin); })
+      .catch(() => { setCanAdminister(false); setCanConfigure(false); });
   }, [stage, isAuthenticated, isAdmin, userId]);
 
   function go(next: Stage) {
@@ -180,6 +182,7 @@ export default function App() {
     setUserId(null);
     setIsAdmin(false);
     setCanAdminister(false);
+    setCanConfigure(false);
     setPendingRole(null);
     settledRef.current = false;
     setHistory([]);
@@ -273,6 +276,7 @@ export default function App() {
           onLogoClick={goToLogo}
           onOpenConfig={() => go("config")}
           canAdminister={canAdminister}
+          canConfigure={canConfigure}
           onOpenAdmin={() => go("admin")}
           userId={userId}
           onOpenSettings={() => go("settings")}

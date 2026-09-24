@@ -26,6 +26,7 @@ export function Console({
   onOpenConfig,
   onOpenRegisterCustomer,
   canAdminister,
+  canConfigure,
   onOpenAdmin,
   userId,
   onOpenSettings,
@@ -47,6 +48,7 @@ export function Console({
   onLogoClick: () => void;
   onOpenConfig: () => void;
   canAdminister: boolean;
+  canConfigure: boolean;
   onOpenAdmin: () => void;
   userId: string | null;
   onOpenSettings: () => void;
@@ -154,7 +156,7 @@ export function Console({
               {D.adminPage.button}
             </button>
           )}
-          {(profile === "Treasury" || isAdmin) && (
+          {canConfigure && (
             <button type="button" className="btn btn-ghost" onClick={onOpenConfig}>
               {D.configButton}
             </button>

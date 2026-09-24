@@ -19,7 +19,7 @@ const clean = (message: string) => message.replace(/^[A-Za-z_]+: /, "");
 export const errorText = (e: unknown, fallback: string) => (e instanceof Error ? clean(e.message) : fallback);
 
 export interface Perms { create: boolean; read: boolean; update: boolean; delete: boolean }
-export interface MyPermissions { isSuperadmin: boolean; users: Perms; transactions: Perms }
+export interface MyPermissions { isSuperadmin: boolean; isAdmin: boolean; users: Perms; transactions: Perms }
 
 export async function getMyPermissions(): Promise<MyPermissions> {
   const list = rows(await supabase.rpc("my_permissions"), "getMyPermissions") as Record<string, unknown>[];
@@ -27,13 +27,14 @@ export async function getMyPermissions(): Promise<MyPermissions> {
     const r = list.find((x) => x.resource === resource);
     return { create: Boolean(r?.can_create), read: Boolean(r?.can_read), update: Boolean(r?.can_update), delete: Boolean(r?.can_delete) };
   };
-  return { isSuperadmin: list.some((r) => Boolean(r.is_superadmin)), users: pick("users"), transactions: pick("transactions") };
+  return { isSuperadmin: list.some((r) => Boolean(r.is_superadmin)), isAdmin: list.some((r) => Boolean(r.is_admin)), users: pick("users"), transactions: pick("transactions") };
 }
 
 export interface StaffUser {
   id: string; name: string | null; email: string | null; username: string | null; phone: string | null;
   country: string | null; defaultCurrency: string | null; kycStatus: "unverified" | "submitted" | "verified";
   roles: { id: string; role: string; status: string }[]; walletCount: number;
+  wallets: { currency: string; balance: number; provider: string | null }[];
 }
 
 export async function listUsers(): Promise<StaffUser[]> {
@@ -46,6 +47,7 @@ export async function listUsers(): Promise<StaffUser[]> {
       kycStatus: u.kyc_status as StaffUser["kycStatus"],
       roles: (r.roles as Record<string, unknown>[]).map((x) => ({ id: x.id as string, role: x.role as string, status: x.status as string })),
       walletCount: (r.wallets as unknown[]).length,
+      wallets: (r.wallets as Record<string, unknown>[]).map((w) => ({ currency: w.currency as string, balance: Number(w.balance_snapshot), provider: (w.provider as string) ?? null })),
     };
   });
 }
@@ -152,3 +154,73 @@ export async function assignStaffRole(userId: string, roleSlug: string, password
 export async function revokeStaffRole(userId: string, roleSlug: string, password: string): Promise<void> {
   done(await supabase.rpc("admin_revoke_staff_role", { p_user_id: userId, p_role_slug: roleSlug, p_password: password }), "revokeStaffRole");
 }
+
+// ---- Roles & access, role status, profile creation, audit trail, gate password ----
+// Same RPCs App/'s Admin page uses (0006/0013/0014/0026); each is authorised
+// in the database (admin tier / users.update / superadmin as noted).
+
+export async function listRoleSlugs(): Promise<{ slug: string; isAdmin: boolean }[]> {
+  const list = rows(await supabase.from("role_definitions").select("slug, is_admin").order("sort_order"), "listRoleSlugs") as Record<string, unknown>[];
+  return list.map((r) => ({ slug: r.slug as string, isAdmin: Boolean(r.is_admin) }));
+}
+
+export async function updateRoleStatus(roleId: string, status: "incomplete" | "pending_verification" | "verified"): Promise<void> {
+  done(await supabase.rpc("admin_update_user_role", { p_role_id: roleId, p_status: status }), "updateRoleStatus");
+}
+
+export async function createProfile(args: { name: string; email: string; role: string; kind: "individual" | "organisation"; password?: string }): Promise<void> {
+  done(await supabase.rpc("admin_create_user", { p_name: args.name, p_email: args.email, p_role: args.role, p_kind: args.kind, p_password: args.password ?? null }), "createProfile");
+}
+
+export async function reassignRole(roleId: string, newRole: string, password: string): Promise<void> {
+  done(await supabase.rpc("admin_reassign_user_role", { p_role_id: roleId, p_new_role: newRole, p_password: password }), "reassignRole");
+}
+
+export async function removeRole(roleId: string, password: string): Promise<void> {
+  done(await supabase.rpc("admin_remove_user_role", { p_role_id: roleId, p_password: password }), "removeRole");
+}
+
+export async function listProfileFeatures(profileType: string): Promise<string[]> {
+  const list = rows(await supabase.from("profile_features").select("feature_key").eq("profile_type", profileType), "listProfileFeatures") as Record<string, unknown>[];
+  return list.map((r) => r.feature_key as string);
+}
+
+export async function setProfileFeatures(profileType: string, featureKeys: string[], password: string): Promise<void> {
+  done(await supabase.rpc("admin_set_profile_features", { p_profile_type: profileType, p_feature_keys: featureKeys, p_password: password }), "setProfileFeatures");
+}
+
+export async function listConsoleTabs(role: string): Promise<string[]> {
+  const list = rows(await supabase.from("console_role_tabs").select("tab_key").eq("role", role), "listConsoleTabs") as Record<string, unknown>[];
+  return list.map((r) => r.tab_key as string);
+}
+
+export async function setConsoleTabs(role: string, tabKeys: string[], password: string): Promise<void> {
+  done(await supabase.rpc("admin_set_console_role_tabs", { p_role: role, p_tab_keys: tabKeys, p_password: password }), "setConsoleTabs");
+}
+
+export interface AuditEvent {
+  seq: number; occurredAt: string; actorName: string | null; actorEmail: string | null; actorLabel: string; action: string;
+  objectTable: string; reason: string | null; beforeData: unknown; afterData: unknown;
+}
+
+export async function listAuditEvents(objectTable?: string): Promise<AuditEvent[]> {
+  const list = rows(await supabase.rpc("admin_list_audit_events", { p_limit: 200, p_object_table: objectTable ?? null }), "listAuditEvents") as Record<string, unknown>[];
+  return list.map((r) => ({
+    seq: Number(r.seq), occurredAt: r.occurred_at as string, actorName: (r.actor_name as string) ?? null, actorEmail: (r.actor_email as string) ?? null,
+    actorLabel: r.actor_label as string, action: r.action as string, objectTable: r.object_table as string, reason: (r.reason as string) ?? null,
+    beforeData: r.before_data, afterData: r.after_data,
+  }));
+}
+
+export async function setGatePassword(current: string, next: string): Promise<void> {
+  done(await supabase.rpc("admin_set_gate_password", { p_gate: "admin", p_current: current, p_new: next }), "setGatePassword");
+}
+
+export const APP_FEATURES: { key: string; label: string }[] = [
+  { key: "savings", label: "Savings" }, { key: "p2p", label: "P2P" }, { key: "games", label: "Games" }, { key: "travel", label: "Travel" },
+  { key: "shop", label: "Shop" }, { key: "fundraise", label: "Fundraise" }, { key: "invest", label: "Invest" }, { key: "groups", label: "Groups" },
+  { key: "pos", label: "POS" }, { key: "payment_links", label: "Payment links" }, { key: "payouts", label: "Payouts" }, { key: "treasury_hub", label: "Treasury" },
+  { key: "gov_hub", label: "Gov Hub" }, { key: "api_hub", label: "API Hub" }, { key: "register_customer", label: "Register customer" }, { key: "admin_panel", label: "Admin panel" },
+];
+export const CONSOLE_ROLES = ["Personal", "Merchant", "Agent", "Treasury", "Institution", "NGO", "Group", "Other"];
+export const CONSOLE_TABS = ["overview", "transactions", "payouts", "merchants", "agents", "mandates", "grants", "members"];

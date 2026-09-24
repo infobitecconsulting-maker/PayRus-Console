@@ -238,6 +238,36 @@ export interface AdminPageCopy {
   noAccess: string;
   selectUser: string;
   deleteNote: string;
+  tabAccess: string;
+  tabAudit: string;
+  allTables: string;
+  auditNote: string;
+  auditBefore: string;
+  auditAfter: string;
+  auditDenied: string;
+  gateTitle: string;
+  gateNote: string;
+  gateCurrent: string;
+  gateNew: string;
+  gateChange: string;
+  gateChanged: string;
+  accessRolesTitle: string;
+  accessRolesNote: string;
+  accessFeaturesTitle: string;
+  accessFeaturesNote: string;
+  accessConsoleTitle: string;
+  accessConsoleNote: string;
+  manage: string;
+  reassign: string;
+  remove: string;
+  roleStatus: string;
+  addProfile: string;
+  kindIndividual: string;
+  kindOrganisation: string;
+  create: string;
+  created: string;
+  walletsLabel: string;
+  adminOnly: string;
 }
 
 export interface ConfigCopy {
