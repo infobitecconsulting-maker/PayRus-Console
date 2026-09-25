@@ -69,7 +69,7 @@ export interface ReceiverInput {
 }
 export interface PayoutAgent {
   id: string; name: string; kind: "payrus_direct" | "correspondent"; partner: string | null; country: string; city: string; address: string; phone: string | null;
-  hours: string | null; distanceKm: number | null; matchLevel: "city" | "country" | "nearby";
+  hours: string | null; distanceKm: number | null; matchLevel: "city" | "country" | "nearby"; scope?: "country" | "zone";
 }
 export interface PayoutReceipt { reference: string; payoutStatus: PayoutRow["status"]; pickupCode: string | null; receiveAmount: number; toCurrency: string; receiverName: string; deliveryMethod: PayoutMethod; agentName: string | null; agentAddress: string | null }
 export interface CorridorQuote { ok: boolean; blockedReason: string | null; fee: number; receiveAmount: number }
@@ -130,13 +130,14 @@ export async function findPayoutAgents(a: { country: string; city: string; lat?:
   }));
 }
 
-// Every cash-pickup point in the receiver's country (migration 0042) — the nearby list is only a suggestion.
-export async function listCountryAgents(a: { country: string; lat?: number | null; lng?: number | null }): Promise<PayoutAgent[]> {
-  const res = await supabase.rpc("list_country_agents", { p_country: a.country, p_lat: a.lat ?? null, p_lng: a.lng ?? null, p_limit: 30 });
+// Every pickup point open to the receiver (migration 0043): any PayRus agent in their country, plus PayRus agents in other
+// countries of the same monetary zone (same currency). Both conditions must hold to cross a border.
+export async function listPickupPoints(a: { country: string; currency: string; lat?: number | null; lng?: number | null }): Promise<PayoutAgent[]> {
+  const res = await supabase.rpc("list_pickup_points", { p_country: a.country, p_currency: a.currency, p_lat: a.lat ?? null, p_lng: a.lng ?? null, p_limit: 60 });
   if (res.error) throw new Error(res.error.message);
   return ((res.data ?? []) as Record<string, unknown>[]).map((r) => ({
     id: r.id as string, name: r.name as string, kind: r.kind as PayoutAgent["kind"], partner: str(r.partner), country: r.country as string, city: r.city as string, address: r.address as string,
-    phone: str(r.phone), hours: str(r.hours), distanceKm: r.distance_km == null ? null : Number(r.distance_km), matchLevel: r.match_level as PayoutAgent["matchLevel"],
+    phone: str(r.phone), hours: str(r.hours), distanceKm: r.distance_km == null ? null : Number(r.distance_km), matchLevel: "country", scope: r.scope as PayoutAgent["scope"],
   }));
 }
 

@@ -303,6 +303,7 @@ export interface ReceiverPageCopy {
   pickupAnywhere: string;
   agents_showAll: string;
   agents_allTitle: string;
+  agents_zoneTag: string;
 }
 
 export interface SendPageCopy {
