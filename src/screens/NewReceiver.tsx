@@ -6,8 +6,8 @@ import { mfaCopy } from "../components/Mfa.tsx";
 import { geocodeAddress } from "../lib/geocode.ts";
 import { COUNTRY_OPTIONS, callingCodeForCountry, currencyForCountry } from "../lib/geo.ts";
 import {
-  COMMISSION_RATE, ensureDemoAgentsNear, findPayoutAgents, listPickupPoints, getCorridorQuote, listOpenCorridors, listMyPayouts, listMyReceivers, loadSendContext, resolveRecipient, sendToNewReceiver,
-  type CorridorQuote, type PayoutAgent, type PayoutMethod, type PayoutReceipt, type PayoutRow, type Receiver, type Recipient, type SendContext,
+  COMMISSION_RATE, ensureDemoAgentsNear, findPayoutAgents, listPickupPoints, getCorridorQuote, listOpenCorridors, getPayoutOptions, listMyPayouts, listMyReceivers, loadSendContext, resolveRecipient, sendToNewReceiver,
+  type CorridorQuote, type PayoutAgent, type PayoutMethod, type PayoutOption, type PayoutReceipt, type PayoutRow, type Receiver, type Recipient, type SendContext,
 } from "../lib/p2p.ts";
 
 type Step = "who" | "how" | "amount" | "confirm" | "success";
@@ -52,6 +52,7 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
   const [from, setFrom] = useState("");
   const [note, setNote] = useState("");
   const [quote, setQuote] = useState<CorridorQuote | null>(null);
+  const [options, setOptions] = useState<PayoutOption[] | null>(null);
   const [openCorridors, setOpenCorridors] = useState<{ from: string; to: string }[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -92,6 +93,22 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
     }, 400);
     return () => { live = false; clearTimeout(t); };
   }, [phone, email, userId]);
+
+  // Which payout methods / providers are actually connected in the receiver's country.
+  useEffect(() => {
+    if (!country) { setOptions(null); return; }
+    let live = true;
+    void getPayoutOptions(country).then((o) => { if (live) setOptions(o); }).catch(() => { if (live) setOptions(null); });
+    return () => { live = false; };
+  }, [country]);
+  const optionFor = (m: PayoutMethod) => options?.find((o) => o.method === m);
+  const methodAvailable = (m: PayoutMethod) => !options || (optionFor(m)?.available ?? true);
+  useEffect(() => {
+    if (method && !methodAvailable(method)) { setMethod(null); setProvider(""); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [options]);
+  const mmProviders = optionFor("mobile_money")?.providers?.length ? optionFor("mobile_money")!.providers : MOBILE_PROVIDERS;
+  const bankNames = optionFor("bank")?.providers ?? [];
 
   // Propose payout agents near the receiver's address once cash pickup is chosen.
   useEffect(() => {
@@ -237,8 +254,8 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
               <strong style={{ fontSize: 13 }}>{R.step_how}</strong>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {METHODS.map((m) => (
-                  <button key={m} type="button" aria-pressed={method === m} className={method === m ? "btn btn-primary" : "btn btn-ghost"} onClick={() => setMethod(m)}>
-                    {M(m)} <span style={{ fontWeight: 400, fontSize: 11 }}>· {R[`eta_${m}` as keyof typeof R]}</span>
+                  <button key={m} type="button" aria-pressed={method === m} disabled={!methodAvailable(m)} className={method === m ? "btn btn-primary" : "btn btn-ghost"} onClick={() => setMethod(m)}>
+                    {M(m)} <span style={{ fontWeight: 400, fontSize: 11 }}>· {methodAvailable(m) ? R[`eta_${m}` as keyof typeof R] : R.notConnected.replace("{country}", country)}</span>
                   </button>
                 ))}
               </div>
@@ -250,14 +267,17 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
                 <strong style={{ fontSize: 13 }}>{R.extraNeeded.replace("{method}", String(M(method)))}</strong>
                 {method === "mobile_money" && (
                   <>
-                    {field("nr-prov", R.provider, <select id="nr-prov" className="input" value={provider} onChange={(e) => setProvider(e.target.value)}><option value="">—</option>{MOBILE_PROVIDERS.map((p) => <option key={p} value={p}>{p}</option>)}</select>)}
+                    {field("nr-prov", R.provider, <select id="nr-prov" className="input" value={provider} onChange={(e) => setProvider(e.target.value)}><option value="">—</option>{mmProviders.map((p) => <option key={p} value={p}>{p}</option>)}</select>)}
                     {field("nr-mm", R.mmNumber, <input id="nr-mm" className="input" inputMode="tel" value={account} onChange={(e) => setAccount(e.target.value)} placeholder={phone} />)}
                     <div className="text-muted" style={{ fontSize: 12 }}>{R.mmHint}</div>
                   </>
                 )}
                 {method === "bank" && (
                   <>
-                    {field("nr-bank", R.bankName, <input id="nr-bank" className="input" value={provider} onChange={(e) => setProvider(e.target.value)} />)}
+                    {field("nr-bank", R.bankName, <>
+                      <input id="nr-bank" className="input" list="nr-banks" value={provider} onChange={(e) => setProvider(e.target.value)} />
+                      <datalist id="nr-banks">{bankNames.map((b) => <option key={b} value={b} />)}</datalist>
+                    </>)}
                     {field("nr-iban", R.account, <input id="nr-iban" className="input" value={account} onChange={(e) => setAccount(e.target.value)} autoComplete="off" />)}
                   </>
                 )}

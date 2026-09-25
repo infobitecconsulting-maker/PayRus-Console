@@ -432,6 +432,7 @@ export const DESK: Record<Locale, Desk> = {
       agents_abroadTag: "other country — paid in {currency} at today's rate",
       noRoute: "Sending from {from} to {to} is not open yet. Pay from a {to} wallet, or from another wallet that has an open route.",
       noRouteAny: "No route to {to} is open from your wallets yet. Top up a {to} wallet to pay this receiver.",
+      notConnected: "Not connected in {country} yet",
     },
     sendPage: {
       button: "Send money",
@@ -1167,6 +1168,7 @@ export const DESK: Record<Locale, Desk> = {
       agents_abroadTag: "autre pays — payé en {currency} au taux du jour",
       noRoute: "L'envoi de {from} vers {to} n'est pas encore ouvert. Payez depuis un portefeuille {to}, ou depuis un autre portefeuille disposant d'une route ouverte.",
       noRouteAny: "Aucune route vers {to} n'est encore ouverte depuis vos portefeuilles. Alimentez un portefeuille {to} pour payer ce bénéficiaire.",
+      notConnected: "Pas encore connecté en {country}",
     },
     sendPage: {
       button: "Envoyer de l'argent",
@@ -1902,6 +1904,7 @@ export const DESK: Record<Locale, Desk> = {
       agents_abroadTag: "outro país — pago em {currency} à taxa do dia",
       noRoute: "O envio de {from} para {to} ainda não está aberto. Pague a partir de uma carteira {to}, ou de outra carteira com rota aberta.",
       noRouteAny: "Ainda não há rota aberta para {to} a partir das suas carteiras. Carregue uma carteira {to} para pagar este beneficiário.",
+      notConnected: "Ainda não ligado em {country}",
     },
     sendPage: {
       button: "Enviar dinheiro",
@@ -2637,6 +2640,7 @@ export const DESK: Record<Locale, Desk> = {
       agents_abroadTag: "otro país — pagado en {currency} al tipo del día",
       noRoute: "El envío de {from} a {to} aún no está abierto. Pague desde una cartera {to}, o desde otra cartera con ruta abierta.",
       noRouteAny: "Aún no hay ruta abierta hacia {to} desde sus carteras. Recargue una cartera {to} para pagar a este beneficiario.",
+      notConnected: "Aún no conectado en {country}",
     },
     sendPage: {
       button: "Enviar dinero",

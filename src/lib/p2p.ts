@@ -102,6 +102,15 @@ export async function listOpenCorridors(): Promise<{ from: string; to: string }[
   return ((res.data ?? []) as Record<string, unknown>[]).map((r) => ({ from: r.from_currency as string, to: r.to_currency as string }));
 }
 
+export interface PayoutOption { method: PayoutMethod; providers: string[]; available: boolean }
+
+// Which payout methods (and providers) are connected in the receiver's country (migration 0044).
+export async function getPayoutOptions(country: string): Promise<PayoutOption[]> {
+  const res = await supabase.rpc("payout_options", { p_country: country });
+  if (res.error) throw new Error(res.error.message);
+  return ((res.data ?? []) as Record<string, unknown>[]).map((r) => ({ method: r.method as PayoutMethod, providers: (r.providers as string[]) ?? [], available: Boolean(r.available) }));
+}
+
 export async function getCorridorQuote(from: string, to: string, amount: number): Promise<CorridorQuote> {
   const res = await supabase.rpc("remittance_quote", { p_from: from, p_to: to, p_amount: amount });
   if (res.error) throw new Error(res.error.message);
