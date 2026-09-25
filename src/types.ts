@@ -203,6 +203,87 @@ export interface SettingsCopy {
   areaLabel: string;
 }
 
+export interface ReceiverPageCopy {
+  memberAdvantage: string;
+  cta: string;
+  ctaDesc: string;
+  title: string;
+  subtitle: string;
+  back: string;
+  saved: string;
+  fullName: string;
+  country: string;
+  city: string;
+  phone: string;
+  email: string;
+  emailHint: string;
+  receivesIn: string;
+  memberFound: string;
+  memberPerks: string;
+  sendToWallet: string;
+  method: string;
+  method_mobile_money: string;
+  method_bank: string;
+  method_cash_pickup: string;
+  eta_mobile_money: string;
+  eta_bank: string;
+  eta_cash_pickup: string;
+  provider: string;
+  mmNumber: string;
+  bankName: string;
+  account: string;
+  idTypeLabel: string;
+  idNumber: string;
+  idHint: string;
+  idType_passport: string;
+  idType_national_id: string;
+  idType_driving_licence: string;
+  idType_residence_permit: string;
+  continue: string;
+  requiredFields: string;
+  youSend: string;
+  payFrom: string;
+  note: string;
+  fee: string;
+  theyGet: string;
+  total: string;
+  balance: string;
+  insufficient: string;
+  review: string;
+  to: string;
+  methodLabel: string;
+  countryLabel: string;
+  memberNudge: string;
+  confirm: string;
+  sending: string;
+  failed: string;
+  success: string;
+  sentTo: string;
+  pickupCode: string;
+  copy: string;
+  copied: string;
+  pickupHelp: string;
+  another: string;
+  payouts: string;
+  noPayouts: string;
+  status_processing: string;
+  status_ready_for_pickup: string;
+  status_paid_out: string;
+  status_blocked: string;
+  status_cancelled: string;
+  pickup_button: string;
+  pickup_title: string;
+  pickup_intro: string;
+  pickup_code: string;
+  pickup_id: string;
+  pickup_confirm: string;
+  pickup_paid: string;
+  pickup_notFound: string;
+  pickup_mismatch: string;
+  pickup_blocked: string;
+  pickup_notAllowed: string;
+}
+
 export interface SendPageCopy {
   button: string;
   headline: string;
@@ -628,6 +709,7 @@ export interface Desk {
   adminPage: AdminPageCopy;
   orgPage: OrgPageCopy;
   sendPage: SendPageCopy;
+  receiverPage: ReceiverPageCopy;
   config: ConfigCopy;
   registerCustomer: RegisterCustomerCopy;
 }

@@ -13,7 +13,7 @@ const errText = (e: unknown, fallback: string) => (e instanceof Error ? e.messag
 const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 2 });
 const hr = { borderTop: "1px solid var(--color-neutral-200, #E3E8EE)" } as const;
 
-export function Send({ D, locale, setLocale, userId, onBack, onLogoClick }: { D: Desk; locale: Locale; setLocale: (l: Locale) => void; userId: string | null; onBack: () => void; onLogoClick: () => void }) {
+export function Send({ D, locale, setLocale, userId, onBack, onLogoClick, onNewReceiver, preselect }: { D: Desk; locale: Locale; setLocale: (l: Locale) => void; userId: string | null; onBack: () => void; onLogoClick: () => void; onNewReceiver: () => void; preselect?: Recipient | null }) {
   const S = D.sendPage;
   const [step, setStep] = useState<Step>("search");
   const [query, setQuery] = useState("");
@@ -29,6 +29,11 @@ export function Send({ D, locale, setLocale, userId, onBack, onLogoClick }: { D:
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<P2pReceipt | null>(null);
+
+  useEffect(() => {
+    if (preselect) { setTo(preselect); setStep("amount"); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preselect?.id]);
 
   useEffect(() => {
     if (!userId) return;
@@ -115,6 +120,11 @@ export function Send({ D, locale, setLocale, userId, onBack, onLogoClick }: { D:
 
         {userId && step === "search" && (
           <div style={{ display: "grid", gap: "var(--space-3)" }}>
+            <div className="tag tag-neutral" style={{ whiteSpace: "normal", lineHeight: 1.4 }}>✓ {D.receiverPage.memberAdvantage}</div>
+            <button type="button" className="card elev-sm" style={{ textAlign: "left", cursor: "pointer", gap: 2 }} onClick={onNewReceiver}>
+              <strong>{D.receiverPage.cta}</strong>
+              <span className="text-muted" style={{ fontSize: 12 }}>{D.receiverPage.ctaDesc}</span>
+            </button>
             <div className="card elev-sm" style={{ gap: 8 }}>
               <label className="card-title" htmlFor="send-find">{S.findLabel}</label>
               <div style={{ display: "flex", gap: 8 }}>

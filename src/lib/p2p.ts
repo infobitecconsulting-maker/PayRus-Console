@@ -52,3 +52,70 @@ export async function loadSendContext(userId: string): Promise<SendContext> {
     defaultCurrency: ((u.data?.location_currency as string | null) ?? (u.data?.default_currency as string | null)) ?? null,
   };
 }
+
+// ---- Send to a NEW receiver from identification data (migration 0038) ----
+export type PayoutMethod = "mobile_money" | "bank" | "cash_pickup";
+export interface Receiver {
+  id: string; fullName: string; country: string | null; currency: string | null; deliveryMethod: PayoutMethod; provider: string | null;
+  account: string; phone: string | null; idType: string | null; idNumber: string | null; city: string | null;
+}
+export interface PayoutRow {
+  id: string; reference: string | null; receiverName: string; deliveryMethod: PayoutMethod; accountMasked: string; receiveAmount: number; toCurrency: string;
+  status: "processing" | "ready_for_pickup" | "paid_out" | "blocked" | "cancelled"; pickupCode: string | null; createdAt: string;
+}
+export interface ReceiverInput {
+  fullName: string; country: string; currency: string; deliveryMethod: PayoutMethod; provider?: string; account?: string; phone?: string;
+  idType?: string; idNumber?: string; city?: string;
+}
+export interface PayoutReceipt { reference: string; payoutStatus: PayoutRow["status"]; pickupCode: string | null; receiveAmount: number; toCurrency: string; receiverName: string; deliveryMethod: PayoutMethod }
+export interface CorridorQuote { ok: boolean; blockedReason: string | null; fee: number; receiveAmount: number }
+
+const str = (v: unknown) => (v == null ? null : String(v));
+
+export async function listMyReceivers(): Promise<Receiver[]> {
+  const res = await supabase.rpc("list_my_receivers");
+  if (res.error) throw new Error(res.error.message);
+  return ((res.data ?? []) as Record<string, unknown>[]).map((r) => ({
+    id: r.id as string, fullName: r.full_name as string, country: str(r.country), currency: str(r.currency), deliveryMethod: r.delivery_method as PayoutMethod,
+    provider: str(r.provider), account: r.account as string, phone: str(r.phone), idType: str(r.id_type), idNumber: str(r.id_number), city: str(r.city),
+  }));
+}
+
+export async function listMyPayouts(): Promise<PayoutRow[]> {
+  const res = await supabase.rpc("list_my_payouts", { p_limit: 20 });
+  if (res.error) throw new Error(res.error.message);
+  return ((res.data ?? []) as Record<string, unknown>[]).map((r) => ({
+    id: r.id as string, reference: str(r.reference), receiverName: r.receiver_name as string, deliveryMethod: r.delivery_method as PayoutMethod,
+    accountMasked: r.account_masked as string, receiveAmount: Number(r.receive_amount), toCurrency: r.to_currency as string,
+    status: r.status as PayoutRow["status"], pickupCode: str(r.pickup_code), createdAt: r.created_at as string,
+  }));
+}
+
+export async function getCorridorQuote(from: string, to: string, amount: number): Promise<CorridorQuote> {
+  const res = await supabase.rpc("remittance_quote", { p_from: from, p_to: to, p_amount: amount });
+  if (res.error) throw new Error(res.error.message);
+  const r = ((res.data ?? []) as Record<string, unknown>[])[0];
+  return { ok: Boolean(r?.ok), blockedReason: str(r?.blocked_reason), fee: Number(r?.fee ?? 0), receiveAmount: Number(r?.receive_amount ?? 0) };
+}
+
+// Saves the receiver (validated per payout method in the database) and sends.
+export async function sendToNewReceiver(a: ReceiverInput & { senderId: string; amount: number; from: string; note?: string }): Promise<PayoutReceipt> {
+  const saved = await supabase.rpc("save_receiver", {
+    p_full_name: a.fullName, p_country: a.country, p_currency: a.currency, p_delivery_method: a.deliveryMethod, p_provider: a.provider ?? null,
+    p_account: a.account ?? null, p_phone: a.phone ?? null, p_id_type: a.idType ?? null, p_id_number: a.idNumber ?? null, p_city: a.city ?? null,
+  });
+  if (saved.error) throw new Error(saved.error.message);
+  const res = await supabase.rpc("send_to_receiver", { p_sender_id: a.senderId, p_receiver_id: saved.data, p_amount: a.amount, p_from: a.from, p_note: a.note ?? null });
+  if (res.error) throw new Error(res.error.message);
+  const r = ((res.data ?? []) as Record<string, unknown>[])[0];
+  return { reference: r.reference as string, payoutStatus: r.payout_status as PayoutRow["status"], pickupCode: str(r.pickup_code), receiveAmount: Number(r.receive_amount), toCurrency: r.to_currency as string, receiverName: r.receiver_name as string, deliveryMethod: r.delivery_method as PayoutMethod };
+}
+
+export interface PickupResult { ok: boolean; reason: string | null; receiverName: string | null; amount: number | null; currency: string | null }
+
+export async function confirmPickup(code: string, idNumber: string): Promise<PickupResult> {
+  const res = await supabase.rpc("payout_confirm_pickup", { p_code: code, p_id_number: idNumber });
+  if (res.error) throw new Error(res.error.message);
+  const r = ((res.data ?? []) as Record<string, unknown>[])[0];
+  return { ok: Boolean(r?.ok), reason: str(r?.reason), receiverName: str(r?.receiver_name), amount: r?.amount == null ? null : Number(r.amount), currency: str(r?.currency) };
+}

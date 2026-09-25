@@ -31,6 +31,7 @@ export function Console({
   canOrganise,
   onOpenOrganisation,
   onOpenSend,
+  onOpenPickup,
   userId,
   onOpenSettings,
 }: {
@@ -56,6 +57,7 @@ export function Console({
   canOrganise: boolean;
   onOpenOrganisation: () => void;
   onOpenSend: () => void;
+  onOpenPickup: () => void;
   userId: string | null;
   onOpenSettings: () => void;
   onOpenRegisterCustomer: () => void;
@@ -157,6 +159,11 @@ export function Console({
           <button type="button" className="btn btn-ghost" onClick={onOpenSettings}>
             {D.settings.button}
           </button>
+          {(profile === "Agent" || isAdmin) && (
+            <button type="button" className="btn btn-ghost" onClick={onOpenPickup}>
+              {D.receiverPage.pickup_button}
+            </button>
+          )}
           {userId && (
             <button type="button" className="btn btn-ghost" onClick={onOpenSend}>
               {D.sendPage.button}

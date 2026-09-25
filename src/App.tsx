@@ -17,12 +17,15 @@ import { getMyPermissions } from "./lib/adminStaff.ts";
 import { RegisterCustomer } from "./screens/RegisterCustomer.tsx";
 import Organisation from "./screens/Organisation.tsx";
 import { Send } from "./screens/Send.tsx";
+import { NewReceiver } from "./screens/NewReceiver.tsx";
+import { Pickup } from "./screens/Pickup.tsx";
+import type { Recipient } from "./lib/p2p.ts";
 import { myMemberships } from "./lib/org.ts";
 import { needsMfaChallenge } from "./lib/mfa.ts";
 import { MfaGate } from "./screens/MfaGate.tsx";
 import { MfaStepUpHost, StaffMfaGate } from "./components/Mfa.tsx";
 
-type Stage = "mfa" | "send" | "organisation" | "landing" | "welcome" | "register" | "profile" | "kyc" | "app" | "config" | "admin" | "settings" | "registerCustomer";
+type Stage = "newReceiver" | "pickup" | "mfa" | "send" | "organisation" | "landing" | "welcome" | "register" | "profile" | "kyc" | "app" | "config" | "admin" | "settings" | "registerCustomer";
 type AuthSession = { user: { id: string; email?: string; user_metadata?: Record<string, unknown> } } | null;
 
 export default function App() {
@@ -47,6 +50,7 @@ export default function App() {
   // Admin tier (admin or superadmin, from the database) unlocks Configuration.
   const [canConfigure, setCanConfigure] = useState(false);
   const [canOrganise, setCanOrganise] = useState(false);
+  const [memberPreselect, setMemberPreselect] = useState<Recipient | null>(null);
   const [tabIx, setTabIx] = useState(0);
   const [rangeIx, setRangeIx] = useState(0);
   const [filterIx, setFilterIx] = useState(0);
@@ -311,6 +315,7 @@ export default function App() {
           canOrganise={canOrganise}
           onOpenOrganisation={() => go("organisation")}
           onOpenSend={() => go("send")}
+          onOpenPickup={() => go("pickup")}
           userId={userId}
           onOpenSettings={() => go("settings")}
           onOpenRegisterCustomer={() => go("registerCustomer")}
@@ -325,8 +330,17 @@ export default function App() {
         <StaffMfaGate locale={locale} onMessage={() => undefined}><Admin D={D} locale={locale} setLocale={setLocale} onBack={goBack} onLogoClick={goToLogo} /></StaffMfaGate>
       )}
 
+      {stage === "newReceiver" && (
+        <NewReceiver D={D} locale={locale} setLocale={setLocale} userId={userId} onBack={goBack} onLogoClick={goToLogo}
+          onSendToMember={(m) => { setMemberPreselect(m); goBack(); }} />
+      )}
+
+      {stage === "pickup" && (
+        <Pickup D={D} locale={locale} setLocale={setLocale} onBack={goBack} onLogoClick={goToLogo} />
+      )}
+
       {stage === "send" && (
-        <Send D={D} locale={locale} setLocale={setLocale} userId={userId} onBack={goBack} onLogoClick={goToLogo} />
+        <Send D={D} locale={locale} setLocale={setLocale} userId={userId} onBack={goBack} onLogoClick={goToLogo} onNewReceiver={() => go("newReceiver")} preselect={memberPreselect} />
       )}
 
       {stage === "organisation" && (
