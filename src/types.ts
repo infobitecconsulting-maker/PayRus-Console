@@ -282,6 +282,24 @@ export interface ReceiverPageCopy {
   pickup_mismatch: string;
   pickup_blocked: string;
   pickup_notAllowed: string;
+  step_who: string;
+  step_how: string;
+  fullAddress: string;
+  addressHint: string;
+  requiredBasics: string;
+  extraNeeded: string;
+  mmHint: string;
+  pickupPoint: string;
+  pickupAt: string;
+  agents_title: string;
+  agents_searching: string;
+  agents_none: string;
+  agents_located: string;
+  agents_byCity: string;
+  agents_direct: string;
+  agents_correspondent: string;
+  agents_away: string;
+  agents_sameCity: string;
 }
 
 export interface SendPageCopy {
