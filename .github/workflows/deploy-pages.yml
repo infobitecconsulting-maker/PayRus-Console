@@ -1,0 +1,55 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm build
+        env:
+          GITHUB_PAGES: "true"
+          # Public/publishable values only (see .env.example) — never put a
+          # service-role key or any other secret in a VITE_ variable.
+          VITE_SUPABASE_URL: "https://iqbsxyltixztmysqsbig.supabase.co"
+          VITE_SUPABASE_ANON_KEY: "sb_publishable_F5j6JBm34JwQKJjbouvEBg_-KyCxYWv"
+          VITE_CONVEX_SITE_URL: "https://flexible-skunk-8.eu-west-1.convex.site"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
