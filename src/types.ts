@@ -300,6 +300,9 @@ export interface ReceiverPageCopy {
   agents_correspondent: string;
   agents_away: string;
   agents_sameCity: string;
+  pickupAnywhere: string;
+  agents_showAll: string;
+  agents_allTitle: string;
 }
 
 export interface SendPageCopy {

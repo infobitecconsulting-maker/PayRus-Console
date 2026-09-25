@@ -130,6 +130,16 @@ export async function findPayoutAgents(a: { country: string; city: string; lat?:
   }));
 }
 
+// Every cash-pickup point in the receiver's country (migration 0042) — the nearby list is only a suggestion.
+export async function listCountryAgents(a: { country: string; lat?: number | null; lng?: number | null }): Promise<PayoutAgent[]> {
+  const res = await supabase.rpc("list_country_agents", { p_country: a.country, p_lat: a.lat ?? null, p_lng: a.lng ?? null, p_limit: 30 });
+  if (res.error) throw new Error(res.error.message);
+  return ((res.data ?? []) as Record<string, unknown>[]).map((r) => ({
+    id: r.id as string, name: r.name as string, kind: r.kind as PayoutAgent["kind"], partner: str(r.partner), country: r.country as string, city: r.city as string, address: r.address as string,
+    phone: str(r.phone), hours: str(r.hours), distanceKm: r.distance_km == null ? null : Number(r.distance_km), matchLevel: r.match_level as PayoutAgent["matchLevel"],
+  }));
+}
+
 export interface PickupResult { ok: boolean; reason: string | null; receiverName: string | null; amount: number | null; currency: string | null }
 
 export async function confirmPickup(code: string, idNumber: string): Promise<PickupResult> {

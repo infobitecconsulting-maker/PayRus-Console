@@ -6,7 +6,7 @@ import { mfaCopy } from "../components/Mfa.tsx";
 import { geocodeAddress } from "../lib/geocode.ts";
 import { COUNTRY_OPTIONS, callingCodeForCountry, currencyForCountry } from "../lib/geo.ts";
 import {
-  COMMISSION_RATE, ensureDemoAgentsNear, findPayoutAgents, getCorridorQuote, listMyPayouts, listMyReceivers, loadSendContext, resolveRecipient, sendToNewReceiver,
+  COMMISSION_RATE, ensureDemoAgentsNear, findPayoutAgents, listCountryAgents, getCorridorQuote, listMyPayouts, listMyReceivers, loadSendContext, resolveRecipient, sendToNewReceiver,
   type CorridorQuote, type PayoutAgent, type PayoutMethod, type PayoutReceipt, type PayoutRow, type Receiver, type Recipient, type SendContext,
 } from "../lib/p2p.ts";
 
@@ -46,6 +46,8 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
   const [agents, setAgents] = useState<PayoutAgent[] | null>(null);
   const [located, setLocated] = useState(false);
   const [agentId, setAgentId] = useState<string | null>(null);
+  const [allAgents, setAllAgents] = useState<PayoutAgent[] | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [amount, setAmount] = useState("");
   const [from, setFrom] = useState("");
   const [note, setNote] = useState("");
@@ -93,13 +95,14 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
   useEffect(() => {
     if (step !== "how" || method !== "cash_pickup") return;
     let live = true;
-    setAgents(null); setLocated(false);
+    setAgents(null); setLocated(false); setAllAgents(null); setCoords(null);
     void (async () => {
       const at = await geocodeAddress(address.trim(), city.trim(), country);
       let list: PayoutAgent[] = [];
       if (at) { try { await ensureDemoAgentsNear({ country, city: city.trim(), address: address.trim(), lat: at.lat, lng: at.lng }); } catch { /* demo helper only */ } }
       try { list = await findPayoutAgents({ country, city: city.trim(), lat: at?.lat, lng: at?.lng }); } catch { /* keep empty */ }
       if (!live) return;
+      setCoords(at ? { lat: at.lat, lng: at.lng } : null);
       setLocated(!!at); setAgents(list); setAgentId((cur) => (cur && list.some((a) => a.id === cur) ? cur : list[0]?.id ?? null));
     })();
     return () => { live = false; };
@@ -113,13 +116,17 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
   const blocked = cross && quote && !quote.ok ? quote.blockedReason : null;
   const currencies = Array.from(new Set([...(ctx?.wallets.map((w) => w.currency) ?? []), ...(ctx?.defaultCurrency ? [ctx.defaultCurrency] : []), from].filter(Boolean)));
   const idLabel = R[`idType_${idType}` as keyof typeof R];
-  const chosenAgent = agents?.find((a) => a.id === agentId) ?? null;
+  const chosenAgent = agents?.find((a) => a.id === agentId) ?? allAgents?.find((a) => a.id === agentId) ?? null;
 
   const basicsOk = fullName.trim().length >= 2 && phone.trim().length >= 7 && !!country && !!city.trim() && address.trim().length >= 5;
   const channelOk = method === "mobile_money" ? !!provider && (account || phone).trim().length >= 7
     : method === "bank" ? !!provider.trim() && account.replace(/\s/g, "").length >= 8
     : method === "cash_pickup" ? idNumber.trim().length >= 4 && agents !== null
     : false;
+
+  const showAllInCountry = async () => {
+    try { setAllAgents(await listCountryAgents({ country, lat: coords?.lat, lng: coords?.lng })); } catch { setAllAgents([]); }
+  };
 
   const pick = (r: Receiver) => {
     setFullName(r.fullName); setPhone(r.phone ?? ""); setCountry(r.country ?? ""); setCity(r.city ?? ""); setAddress(r.address ?? ""); setEmail(r.email ?? "");
@@ -267,6 +274,19 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
                           {(a.hours || a.phone) && <span className="text-muted" style={{ fontSize: 11 }}>{[a.hours, a.phone].filter(Boolean).join(" · ")}</span>}
                         </button>
                       ))}
+                      <div className="text-muted" style={{ fontSize: 12 }}>{R.pickupAnywhere.replace("{country}", country)}</div>
+                      {agents !== null && allAgents === null && <div><button type="button" className="btn btn-ghost" onClick={() => void showAllInCountry()}>{R.agents_showAll.replace("{country}", country)}</button></div>}
+                      {allAgents && (
+                        <div style={{ display: "grid", gap: 6 }}>
+                          <strong style={{ fontSize: 12 }}>{R.agents_allTitle.replace("{country}", country)}</strong>
+                          {allAgents.filter((a) => !(agents ?? []).some((x) => x.id === a.id)).map((a) => (
+                            <button key={a.id} type="button" aria-pressed={agentId === a.id} className="card elev-sm" style={{ textAlign: "left", cursor: "pointer", gap: 2, outline: agentId === a.id ? "2px solid var(--color-primary, #1D3F6B)" : "none" }} onClick={() => setAgentId(a.id)}>
+                              <strong>{a.name} <span className="text-muted" style={{ fontWeight: 400 }}>· {a.kind === "payrus_direct" ? R.agents_direct : R.agents_correspondent}</span></strong>
+                              <span className="text-muted" style={{ fontSize: 12 }}>{a.address}, {a.city}{a.distanceKm != null ? ` · ${R.agents_away.replace("{km}", String(a.distanceKm))}` : ""}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </>
                 )}
@@ -328,6 +348,7 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
                 <div style={{ fontFamily: "monospace", fontSize: 30, fontWeight: 700, letterSpacing: 4 }}>{receipt.pickupCode}</div>
                 <div><button type="button" className="btn btn-ghost" onClick={() => { void navigator.clipboard?.writeText(receipt.pickupCode ?? ""); setMessage(R.copied); }}>{R.copy}</button></div>
                 {receipt.agentName && <div style={{ fontSize: 13, fontWeight: 600 }}>{R.pickupAt.replace("{agent}", receipt.agentName).replace("{address}", receipt.agentAddress ?? "")}</div>}
+                <div className="text-muted" style={{ fontSize: 12 }}>{R.pickupAnywhere.replace("{country}", country)}</div>
                 <div className="text-muted" style={{ fontSize: 12 }}>{R.pickupHelp.replace("{name}", receipt.receiverName).replace("{idType}", String(idLabel)).replace("{idNumber}", idNumber)}</div>
               </div>
             )}

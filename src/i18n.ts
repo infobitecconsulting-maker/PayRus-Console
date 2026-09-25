@@ -425,6 +425,9 @@ export const DESK: Record<Locale, Desk> = {
       agents_correspondent: "Partner agent",
       agents_away: "{km} km away",
       agents_sameCity: "Same city",
+      pickupAnywhere: "The receiver can also collect the cash at any other PayRus agent in {country} — the points above are just the nearest.",
+      agents_showAll: "Show all pickup points in {country}",
+      agents_allTitle: "All pickup points in {country}",
     },
     sendPage: {
       button: "Send money",
@@ -1153,6 +1156,9 @@ export const DESK: Record<Locale, Desk> = {
       agents_correspondent: "Agent partenaire",
       agents_away: "à {km} km",
       agents_sameCity: "Même ville",
+      pickupAnywhere: "Le bénéficiaire peut aussi retirer les espèces chez n'importe quel autre agent PayRus en {country} — les points ci-dessus sont simplement les plus proches.",
+      agents_showAll: "Voir tous les points de retrait en {country}",
+      agents_allTitle: "Tous les points de retrait en {country}",
     },
     sendPage: {
       button: "Envoyer de l'argent",
@@ -1881,6 +1887,9 @@ export const DESK: Record<Locale, Desk> = {
       agents_correspondent: "Agente parceiro",
       agents_away: "a {km} km",
       agents_sameCity: "Mesma cidade",
+      pickupAnywhere: "O beneficiário também pode levantar o dinheiro em qualquer outro agente PayRus em {country} — os pontos acima são apenas os mais próximos.",
+      agents_showAll: "Ver todos os pontos de levantamento em {country}",
+      agents_allTitle: "Todos os pontos de levantamento em {country}",
     },
     sendPage: {
       button: "Enviar dinheiro",
@@ -2609,6 +2618,9 @@ export const DESK: Record<Locale, Desk> = {
       agents_correspondent: "Agente asociado",
       agents_away: "a {km} km",
       agents_sameCity: "Misma ciudad",
+      pickupAnywhere: "El beneficiario también puede retirar el efectivo en cualquier otro agente PayRus en {country} — los puntos de arriba son solo los más cercanos.",
+      agents_showAll: "Ver todos los puntos de retiro en {country}",
+      agents_allTitle: "Todos los puntos de retiro en {country}",
     },
     sendPage: {
       button: "Enviar dinero",
