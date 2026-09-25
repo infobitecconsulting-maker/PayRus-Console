@@ -6,8 +6,8 @@ import { mfaCopy } from "../components/Mfa.tsx";
 import { geocodeAddress } from "../lib/geocode.ts";
 import { COUNTRY_OPTIONS, callingCodeForCountry, currencyForCountry } from "../lib/geo.ts";
 import {
-  COMMISSION_RATE, ensureDemoAgentsNear, findPayoutAgents, listPickupPoints, getCorridorQuote, listOpenCorridors, getPayoutOptions, listMyPayouts, listMyReceivers, loadSendContext, resolveRecipient, sendToNewReceiver,
-  type CorridorQuote, type PayoutAgent, type PayoutMethod, type PayoutOption, type PayoutReceipt, type PayoutRow, type Receiver, type Recipient, type SendContext,
+  ensureDemoAgentsNear, getChannelOptions, getChannelQuote, findPayoutAgents, listPickupPoints, listOpenCorridors, getPayoutOptions, listMyPayouts, listMyReceivers, loadSendContext, resolveRecipient, sendToNewReceiver,
+  type ChannelOption, type ChannelQuote, type PayoutAgent, type PayoutMethod, type PayoutOption, type PayoutReceipt, type PayoutRow, type Receiver, type Recipient, type SendContext,
 } from "../lib/p2p.ts";
 
 type Step = "who" | "how" | "amount" | "confirm" | "success";
@@ -51,7 +51,11 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
   const [amount, setAmount] = useState("");
   const [from, setFrom] = useState("");
   const [note, setNote] = useState("");
-  const [quote, setQuote] = useState<CorridorQuote | null>(null);
+  // Cash is priced by the network of the chosen agent: PayRus agent or partner distributor.
+  const agentKind = method === "cash_pickup" ? (agents?.find((a) => a.id === agentId) ?? allAgents?.find((a) => a.id === agentId))?.kind : undefined;
+  const channelType = agentKind === "payrus_direct" ? "payrus_agent" : agentKind === "correspondent" ? "partner_distributor" : undefined;
+  const [cq, setCq] = useState<ChannelQuote | null>(null);
+  const [chOptions, setChOptions] = useState<ChannelOption[] | null>(null);
   const [options, setOptions] = useState<PayoutOption[] | null>(null);
   const [openCorridors, setOpenCorridors] = useState<{ from: string; to: string }[] | null>(null);
   const [busy, setBusy] = useState(false);
@@ -73,13 +77,23 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
 
   const toCurrency = country ? currencyForCountry(country) : "";
   const numAmt = parseFloat(amount) || 0;
-  const cross = !!toCurrency && toCurrency !== from;
+  // The price follows the selected channel: the rail partner's contract terms, its SLA and the PayRus pricing policy.
   useEffect(() => {
-    if (step === "who" || step === "how" || !cross || numAmt <= 0) { setQuote(null); return; }
+    if ((step !== "amount" && step !== "confirm") || !method || !country || numAmt <= 0) { setCq(null); return; }
     let live = true;
-    void getCorridorQuote(from, toCurrency, numAmt).then((q) => { if (live) setQuote(q); }).catch(() => { if (live) setQuote(null); });
-    return () => { live = false; };
-  }, [step, cross, from, toCurrency, numAmt]);
+    const t = setTimeout(() => {
+      void getChannelQuote({ from, amount: numAmt, country, method, provider: provider || undefined, to: toCurrency, channelType }).then((q) => { if (live) setCq(q); }).catch(() => { if (live) setCq(null); });
+    }, 250);
+    return () => { live = false; clearTimeout(t); };
+  }, [step, method, country, provider, from, numAmt, toCurrency, channelType]);
+  useEffect(() => {
+    if (!country || step === "who" || step === "success") { setChOptions(null); return; }
+    let live = true;
+    const t = setTimeout(() => {
+      void getChannelOptions(country, from, step === "amount" || step === "confirm" ? numAmt || undefined : undefined).then((o) => { if (live) setChOptions(o); }).catch(() => { if (live) setChOptions(null); });
+    }, 250);
+    return () => { live = false; clearTimeout(t); };
+  }, [country, from, step, numAmt]);
 
   useEffect(() => {
     const ids = [phone.trim().length >= 7 ? phone.trim() : "", email.includes("@") ? email.trim() : ""].filter(Boolean);
@@ -107,6 +121,11 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
     if (method && !methodAvailable(method)) { setMethod(null); setProvider(""); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options]);
+  const channelHint = (m: PayoutMethod) => {
+    const o = chOptions?.find((x) => x.method === m);
+    const del = o?.deliveryTime ? R[`delivery_${o.deliveryTime}` as keyof typeof R] : R[`eta_${m}` as keyof typeof R];
+    return o?.fee != null ? `≈ ${fmt(o.fee)} ${from} · ${del}` : del;
+  };
   const mmProviders = optionFor("mobile_money")?.providers?.length ? optionFor("mobile_money")!.providers : MOBILE_PROVIDERS;
   const bankNames = optionFor("bank")?.providers ?? [];
 
@@ -127,12 +146,12 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
     return () => { live = false; };
   }, [step, method, country, city, address]);
 
-  const fee = cross ? (quote?.fee ?? 0) : numAmt * COMMISSION_RATE;
-  const receives = cross ? (quote?.receiveAmount ?? 0) : numAmt;
+  const fee = cq?.fee ?? 0;
+  const receives = cq?.receiveAmount ?? 0;
   const total = numAmt + fee;
   const wallet = ctx?.wallets.find((w) => w.currency === from);
   const short = !!wallet && total > wallet.balance;
-  const blocked = cross && quote && !quote.ok ? quote.blockedReason : null;
+  const blocked = cq && !cq.ok ? cq.blockedReason : null;
   // Only offer wallets that can actually pay this receiver: their own currency, or one with an open corridor to it.
   const canPayFrom = (c: string) => !toCurrency || c === toCurrency || !openCorridors || openCorridors.some((o) => o.from === c && o.to === toCurrency);
   const payFromOptions = (ctx?.wallets.map((w) => w.currency) ?? []).filter(canPayFrom);
@@ -255,7 +274,7 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {METHODS.map((m) => (
                   <button key={m} type="button" aria-pressed={method === m} disabled={!methodAvailable(m)} className={method === m ? "btn btn-primary" : "btn btn-ghost"} onClick={() => setMethod(m)}>
-                    {M(m)} <span style={{ fontWeight: 400, fontSize: 11 }}>· {methodAvailable(m) ? R[`eta_${m}` as keyof typeof R] : R.notConnected.replace("{country}", country)}</span>
+                    {M(m)} <span style={{ fontWeight: 400, fontSize: 11 }}>· {methodAvailable(m) ? channelHint(m) : R.notConnected.replace("{country}", country)}</span>
                   </button>
                 ))}
               </div>
@@ -339,10 +358,25 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
               <div style={{ display: "flex", justifyContent: "space-between" }}><strong>{R.total}</strong><strong>{fmt(total)} {from}</strong></div>
               {wallet && <div className="text-muted" style={{ fontSize: 12 }}>{R.balance}: {fmt(wallet.balance)} {from}</div>}
               {short && <div style={{ color: "#A3243B", fontSize: 12 }}>{R.insufficient}</div>}
+              {cq?.deliveryTime && <div className="text-muted" style={{ fontSize: 12 }}>{R.deliveryLabel}: {R[`delivery_${cq.deliveryTime}` as keyof typeof R]}</div>}
+              <div className="text-muted" style={{ fontSize: 11 }}>{R.priceNote}</div>
               {noRouteAtAll && <div style={{ color: "#A3243B", fontSize: 12 }}>{R.noRouteAny.replace("{to}", toCurrency)}</div>}
               {blocked && <div style={{ color: "#A3243B", fontSize: 12 }}>{blocked === "not_offered" ? R.noRoute.replace("{from}", from).replace("{to}", toCurrency) : `${R.failed} (${blocked.replace(/_/g, " ")})`}</div>}
             </div>
-            <div><button type="button" className="btn btn-primary" disabled={numAmt <= 0 || short || !!blocked || noRouteAtAll || (cross && !quote)} onClick={() => setStep("confirm")}>{R.review}</button></div>
+            {numAmt > 0 && chOptions && chOptions.filter((o) => o.available).length > 1 && (
+              <div style={{ ...hr, paddingTop: 8, display: "grid", gap: 6 }}>
+                <strong style={{ fontSize: 12 }}>{R.compare}</strong>
+                {chOptions.filter((o) => o.available).map((o) => (
+                  <div key={o.method} style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", fontSize: 13, padding: "6px 8px", borderRadius: 8, background: o.method === method ? "#E7F3EC" : undefined }}>
+                    <strong>{M(o.method)}</strong>
+                    <span className="text-muted">{o.fee != null ? `${fmt(o.fee)} ${from}` : ""} · {o.deliveryTime ? R[`delivery_${o.deliveryTime}` as keyof typeof R] : ""}</span>
+                    {o.method === method ? <span style={{ fontSize: 11, fontWeight: 700 }}>{R.selected}</span>
+                      : <button type="button" className="btn btn-ghost" onClick={() => { setMethod(o.method); setProvider(""); setAccount(""); setStep("how"); }}>{R.choose}</button>}
+                  </div>
+                ))}
+              </div>
+            )}
+            <div><button type="button" className="btn btn-primary" disabled={numAmt <= 0 || short || !!blocked || noRouteAtAll || !cq} onClick={() => setStep("confirm")}>{R.review}</button></div>
           </div>
         )}
 

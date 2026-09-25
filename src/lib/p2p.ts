@@ -111,6 +111,28 @@ export async function getPayoutOptions(country: string): Promise<PayoutOption[]>
   return ((res.data ?? []) as Record<string, unknown>[]).map((r) => ({ method: r.method as PayoutMethod, providers: (r.providers as string[]) ?? [], available: Boolean(r.available) }));
 }
 
+export interface ChannelOption { method: PayoutMethod; available: boolean; providers: string[]; feeEur: number; fee: number | null; deliveryTime: string | null; source: string }
+export interface ChannelQuote { ok: boolean; blockedReason: string | null; fee: number; fxCost: number; receiveAmount: number; feeEur: number; deliveryTime: string | null; source: string }
+
+// Price and delivery time per payout channel in a country, from the rail partners' contract terms (migration 0047).
+export async function getChannelOptions(country: string, from: string, amount?: number): Promise<ChannelOption[]> {
+  const res = await supabase.rpc("channel_options", { p_country: country, p_from: from, p_amount: amount ?? null });
+  if (res.error) throw new Error(res.error.message);
+  return ((res.data ?? []) as Record<string, unknown>[]).map((r) => ({
+    method: r.method as PayoutMethod, available: Boolean(r.available), providers: (r.providers as string[]) ?? [], feeEur: Number(r.fee_eur),
+    fee: r.fee == null ? null : Number(r.fee), deliveryTime: str(r.delivery_time), source: r.source as string,
+  }));
+}
+
+// The sender's quote on the selected channel: the fee follows the channel's real contractual cost.
+export async function getChannelQuote(a: { from: string; amount: number; country: string; method: PayoutMethod; provider?: string; to?: string; channelType?: string }): Promise<ChannelQuote> {
+  const res = await supabase.rpc("channel_quote", { p_from: a.from, p_amount: a.amount, p_country: a.country, p_method: a.method, p_provider: a.provider ?? null, p_to: a.to ?? null, p_channel_type: a.channelType ?? null });
+  if (res.error) throw new Error(res.error.message);
+  const r = ((res.data ?? []) as Record<string, unknown>[])[0];
+  if (!r) throw new Error("getChannelQuote: empty response");
+  return { ok: Boolean(r.ok), blockedReason: str(r.blocked_reason), fee: Number(r.fee), fxCost: Number(r.fx_cost), receiveAmount: Number(r.receive_amount), feeEur: Number(r.fee_eur), deliveryTime: str(r.delivery_time), source: r.source as string };
+}
+
 export async function getCorridorQuote(from: string, to: string, amount: number): Promise<CorridorQuote> {
   const res = await supabase.rpc("remittance_quote", { p_from: from, p_to: to, p_amount: amount });
   if (res.error) throw new Error(res.error.message);

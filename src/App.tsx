@@ -19,13 +19,14 @@ import Organisation from "./screens/Organisation.tsx";
 import { Send } from "./screens/Send.tsx";
 import { NewReceiver } from "./screens/NewReceiver.tsx";
 import { Pickup } from "./screens/Pickup.tsx";
+import { Partners } from "./screens/Partners.tsx";
 import type { Recipient } from "./lib/p2p.ts";
 import { myMemberships } from "./lib/org.ts";
 import { needsMfaChallenge } from "./lib/mfa.ts";
 import { MfaGate } from "./screens/MfaGate.tsx";
 import { MfaStepUpHost, StaffMfaGate } from "./components/Mfa.tsx";
 
-type Stage = "newReceiver" | "pickup" | "mfa" | "send" | "organisation" | "landing" | "welcome" | "register" | "profile" | "kyc" | "app" | "config" | "admin" | "settings" | "registerCustomer";
+type Stage = "partners" | "newReceiver" | "pickup" | "mfa" | "send" | "organisation" | "landing" | "welcome" | "register" | "profile" | "kyc" | "app" | "config" | "admin" | "settings" | "registerCustomer";
 type AuthSession = { user: { id: string; email?: string; user_metadata?: Record<string, unknown> } } | null;
 
 export default function App() {
@@ -316,6 +317,7 @@ export default function App() {
           onOpenOrganisation={() => go("organisation")}
           onOpenSend={() => go("send")}
           onOpenPickup={() => go("pickup")}
+          onOpenPartners={() => go("partners")}
           userId={userId}
           onOpenSettings={() => go("settings")}
           onOpenRegisterCustomer={() => go("registerCustomer")}
@@ -333,6 +335,10 @@ export default function App() {
       {stage === "newReceiver" && (
         <NewReceiver D={D} locale={locale} setLocale={setLocale} userId={userId} onBack={goBack} onLogoClick={goToLogo}
           onSendToMember={(m) => { setMemberPreselect(m); goBack(); }} />
+      )}
+
+      {stage === "partners" && (
+        <Partners D={D} locale={locale} setLocale={setLocale} onBack={goBack} onLogoClick={goToLogo} />
       )}
 
       {stage === "pickup" && (

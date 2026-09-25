@@ -32,6 +32,7 @@ export function Console({
   onOpenOrganisation,
   onOpenSend,
   onOpenPickup,
+  onOpenPartners,
   userId,
   onOpenSettings,
 }: {
@@ -58,6 +59,7 @@ export function Console({
   onOpenOrganisation: () => void;
   onOpenSend: () => void;
   onOpenPickup: () => void;
+  onOpenPartners: () => void;
   userId: string | null;
   onOpenSettings: () => void;
   onOpenRegisterCustomer: () => void;
@@ -177,6 +179,11 @@ export function Console({
           {canAdminister && (
             <button type="button" className="btn btn-ghost" onClick={onOpenAdmin}>
               {D.adminPage.button}
+            </button>
+          )}
+          {canConfigure && (
+            <button type="button" className="btn btn-ghost" onClick={onOpenPartners}>
+              {D.partnersPage.button}
             </button>
           )}
           {canConfigure && (

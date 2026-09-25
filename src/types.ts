@@ -308,6 +308,72 @@ export interface ReceiverPageCopy {
   noRoute: string;
   noRouteAny: string;
   notConnected: string;
+  delivery_near_real_time: string;
+  delivery_same_day: string;
+  delivery_t_plus_1: string;
+  delivery_t_plus_2: string;
+  compare: string;
+  choose: string;
+  selected: string;
+  deliveryLabel: string;
+  priceNote: string;
+}
+
+export interface PartnersPageCopy {
+  button: string;
+  headline: string;
+  subtitle: string;
+  tabContracts: string;
+  tabPricing: string;
+  tabImport: string;
+  loading: string;
+  none: string;
+  live: string;
+  notLive: string;
+  integration: string;
+  adapterLabel: string;
+  readinessTitle: string;
+  checklistTitle: string;
+  prefundTitle: string;
+  prefundAmount: string;
+  record: string;
+  termsTitle: string;
+  approve: string;
+  suspendTerm: string;
+  reasonPrompt: string;
+  saved: string;
+  blockerLabel: string;
+  warningLabel: string;
+  okLabel: string;
+  moveTo: string;
+  policyTitle: string;
+  policyHint: string;
+  superadminOnly: string;
+  save: string;
+  simulatorTitle: string;
+  country: string;
+  method: string;
+  amountUsd: string;
+  simulate: string;
+  chosenTag: string;
+  costLabel: string;
+  feeLabel: string;
+  termsLabel: string;
+  agentsLabel: string;
+  queueLabel: string;
+  prefundShort: string;
+  importIntro: string;
+  importPaste: string;
+  draftAI: string;
+  drafting: string;
+  aiNotConfigured: string;
+  aiUnavailable: string;
+  aiForbidden: string;
+  ambiguitiesTitle: string;
+  draftJson: string;
+  importDraft: string;
+  imported: string;
+  warningsTitle: string;
 }
 
 export interface SendPageCopy {
@@ -735,6 +801,7 @@ export interface Desk {
   adminPage: AdminPageCopy;
   orgPage: OrgPageCopy;
   sendPage: SendPageCopy;
+  partnersPage: PartnersPageCopy;
   receiverPage: ReceiverPageCopy;
   config: ConfigCopy;
   registerCustomer: RegisterCustomerCopy;
