@@ -43,6 +43,8 @@ const nums = <T extends object>(r: T, keys: string[]): T => {
   return o as T;
 };
 
+export const listPriorities = () => rows<{ contractId: string; routingPriority: number }>("partner_priorities").then((r) => Object.fromEntries(r.map((x) => [x.contractId, Number(x.routingPriority)])) as Record<string, number>);
+export const setPriority = (id: string, priority: number, reason: string) => call("partner_set_priority", { p_contract_id: id, p_priority: priority, p_reason: reason });
 export const listContracts = () => rows<ContractRow>("partner_list").then((r) => r.map((c) => nums(c, ["prefundBalance", "terms", "agents", "queuedRequests"])));
 export const contractTerms = (id: string) => rows<TermRow>("partner_terms", { p_contract_id: id })
   .then((r) => r.map((t) => nums(t, ["flatFee", "commissionPercent", "senderFlatFeeEur", "senderPercentFee", "fxMargin", "minAmount", "maxAmount", "partnerFxMargin"])));

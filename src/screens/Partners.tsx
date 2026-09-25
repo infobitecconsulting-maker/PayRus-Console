@@ -3,7 +3,7 @@ import type { Desk, Locale } from "../types.ts";
 import { BackButton, LocaleMenu, PayRusLogo } from "../components/parts.tsx";
 import { getMyPermissions } from "../lib/adminStaff.ts";
 import {
-  contractReadiness, contractTerms, draftOfferWithAi, importOffer, integrationTasks, listContracts, listPolicies, recordPrefund, setAdapter,
+  contractReadiness, contractTerms, listPriorities, setPriority, draftOfferWithAi, importOffer, integrationTasks, listContracts, listPolicies, recordPrefund, setAdapter,
   setContractStatus, setIntegrationStep, setPolicy, setTermActivation, simulatePricing,
   type ContractRow, type IntegrationTask, type PolicyRow, type ReadinessRow, type SimRow, type TermRow,
 } from "../lib/partners.ts";
@@ -85,10 +85,14 @@ function ContractDetail({ P, c, notify, reload }: { P: Copy; c: ContractRow; not
   const [tasks, setTasks] = useState<IntegrationTask[]>([]);
   const [terms, setTerms] = useState<TermRow[]>([]);
   const [amount, setAmount] = useState("");
+  const [isSuper, setIsSuper] = useState(false);
+  const [prio, setPrio] = useState<string>("");
+  useEffect(() => { void getMyPermissions().then((p) => setIsSuper(p.isSuperadmin)).catch(() => setIsSuper(false)); }, []);
   const refresh = useCallback(() => {
     void contractReadiness(c.contractId).then(setReady).catch((e) => notify(errText(e)));
     void integrationTasks(c.contractId).then(setTasks).catch(() => undefined);
     void contractTerms(c.contractId).then(setTerms).catch(() => undefined);
+    void listPriorities().then((m) => setPrio(String(m[c.contractId] ?? ""))).catch(() => undefined);
   }, [c.contractId, notify]);
   useEffect(refresh, [refresh]);
   const run = (fn: () => Promise<unknown>) => { fn().then(() => { notify(P.saved); refresh(); reload(); }).catch((e) => notify(errText(e))); };
@@ -127,6 +131,12 @@ function ContractDetail({ P, c, notify, reload }: { P: Copy; c: ContractRow; not
         ))}
       </div>
 
+      <div style={{ ...hr, paddingTop: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <strong style={{ fontSize: 13 }}>Routing priority (1 = first)</strong>
+        <input className="input" style={{ width: 90 }} type="number" min={1} max={1000} disabled={!isSuper} aria-label="Routing priority" value={prio} onChange={(e) => setPrio(e.target.value)} />
+        <button type="button" className="btn btn-ghost" disabled={!isSuper || !Number(prio)} onClick={() => { const r = window.prompt(P.reasonPrompt); if (r === null) return; run(() => setPriority(c.contractId, Number(prio), r)); }}>Save priority</button>
+        <span className="text-muted" style={{ fontSize: 12 }}>Lower numbers are used first on a corridor; the pricing objective picks between equals.</span>
+      </div>
       <div style={{ ...hr, paddingTop: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <strong style={{ fontSize: 13 }}>{P.prefundTitle}: {n2(c.prefundBalance)} {c.settlementCurrency}</strong>
         <input className="input" style={{ width: 130 }} inputMode="decimal" aria-label={P.prefundAmount} placeholder={P.prefundAmount} value={amount} onChange={(e) => setAmount(e.target.value)} />
