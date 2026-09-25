@@ -6,7 +6,7 @@ import { mfaCopy } from "../components/Mfa.tsx";
 import { geocodeAddress } from "../lib/geocode.ts";
 import { COUNTRY_OPTIONS, callingCodeForCountry, currencyForCountry } from "../lib/geo.ts";
 import {
-  COMMISSION_RATE, ensureDemoAgentsNear, findPayoutAgents, listPickupPoints, getCorridorQuote, listMyPayouts, listMyReceivers, loadSendContext, resolveRecipient, sendToNewReceiver,
+  COMMISSION_RATE, ensureDemoAgentsNear, findPayoutAgents, listPickupPoints, getCorridorQuote, listOpenCorridors, listMyPayouts, listMyReceivers, loadSendContext, resolveRecipient, sendToNewReceiver,
   type CorridorQuote, type PayoutAgent, type PayoutMethod, type PayoutReceipt, type PayoutRow, type Receiver, type Recipient, type SendContext,
 } from "../lib/p2p.ts";
 
@@ -52,6 +52,7 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
   const [from, setFrom] = useState("");
   const [note, setNote] = useState("");
   const [quote, setQuote] = useState<CorridorQuote | null>(null);
+  const [openCorridors, setOpenCorridors] = useState<{ from: string; to: string }[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<PayoutReceipt | null>(null);
@@ -64,6 +65,7 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
     if (!userId) return;
     void loadSendContext(userId).then((c) => { setCtx(c); setFrom((f) => f || c.defaultCurrency || c.wallets[0]?.currency || "USD"); }).catch(() => undefined);
     reloadLists();
+    void listOpenCorridors().then(setOpenCorridors).catch(() => undefined);
     const id = setInterval(() => void listMyPayouts().then(setPayouts).catch(() => undefined), 20000);
     return () => clearInterval(id);
   }, [userId]);
@@ -114,7 +116,14 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
   const wallet = ctx?.wallets.find((w) => w.currency === from);
   const short = !!wallet && total > wallet.balance;
   const blocked = cross && quote && !quote.ok ? quote.blockedReason : null;
-  const currencies = Array.from(new Set([...(ctx?.wallets.map((w) => w.currency) ?? []), ...(ctx?.defaultCurrency ? [ctx.defaultCurrency] : []), from].filter(Boolean)));
+  // Only offer wallets that can actually pay this receiver: their own currency, or one with an open corridor to it.
+  const canPayFrom = (c: string) => !toCurrency || c === toCurrency || !openCorridors || openCorridors.some((o) => o.from === c && o.to === toCurrency);
+  const payFromOptions = (ctx?.wallets.map((w) => w.currency) ?? []).filter(canPayFrom);
+  const noRouteAtAll = !!toCurrency && (ctx?.wallets.length ?? 0) > 0 && payFromOptions.length === 0;
+  useEffect(() => {
+    if (toCurrency && payFromOptions.length > 0 && !payFromOptions.includes(from)) setFrom(payFromOptions.includes(toCurrency) ? toCurrency : payFromOptions[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toCurrency, payFromOptions.join(",")]);
   const idLabel = R[`idType_${idType}` as keyof typeof R];
   const chosenAgent = agents?.find((a) => a.id === agentId) ?? allAgents?.find((a) => a.id === agentId) ?? null;
 
@@ -301,7 +310,7 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
             <div><div className="card-title">{fullName}</div><div className="text-muted" style={{ fontSize: 12 }}>{M(method)}{provider ? ` · ${provider}` : ""} · {city}, {country}{chosenAgent ? ` · ${chosenAgent.name}` : ""}</div></div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <div className="field" style={{ flex: 1, minWidth: 140 }}><label htmlFor="nr-amt">{R.youSend}</label><input id="nr-amt" className="input" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" /></div>
-              <div className="field"><label htmlFor="nr-from">{R.payFrom}</label><select id="nr-from" className="input" value={from} onChange={(e) => setFrom(e.target.value)}>{currencies.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
+              <div className="field"><label htmlFor="nr-from">{R.payFrom}</label><select id="nr-from" className="input" value={from} onChange={(e) => setFrom(e.target.value)}>{(payFromOptions.length > 0 ? payFromOptions : [from]).map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
             </div>
             {field("nr-note", R.note, <input id="nr-note" className="input" value={note} maxLength={120} onChange={(e) => setNote(e.target.value)} />)}
             <div style={{ ...hr, paddingTop: 8, display: "grid", gap: 4, fontSize: 13 }}>
@@ -310,9 +319,10 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
               <div style={{ display: "flex", justifyContent: "space-between" }}><strong>{R.total}</strong><strong>{fmt(total)} {from}</strong></div>
               {wallet && <div className="text-muted" style={{ fontSize: 12 }}>{R.balance}: {fmt(wallet.balance)} {from}</div>}
               {short && <div style={{ color: "#A3243B", fontSize: 12 }}>{R.insufficient}</div>}
-              {blocked && <div style={{ color: "#A3243B", fontSize: 12 }}>{R.failed} ({blocked.replace(/_/g, " ")})</div>}
+              {noRouteAtAll && <div style={{ color: "#A3243B", fontSize: 12 }}>{R.noRouteAny.replace("{to}", toCurrency)}</div>}
+              {blocked && <div style={{ color: "#A3243B", fontSize: 12 }}>{blocked === "not_offered" ? R.noRoute.replace("{from}", from).replace("{to}", toCurrency) : `${R.failed} (${blocked.replace(/_/g, " ")})`}</div>}
             </div>
-            <div><button type="button" className="btn btn-primary" disabled={numAmt <= 0 || short || !!blocked || (cross && !quote)} onClick={() => setStep("confirm")}>{R.review}</button></div>
+            <div><button type="button" className="btn btn-primary" disabled={numAmt <= 0 || short || !!blocked || noRouteAtAll || (cross && !quote)} onClick={() => setStep("confirm")}>{R.review}</button></div>
           </div>
         )}
 

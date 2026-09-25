@@ -305,6 +305,8 @@ export interface ReceiverPageCopy {
   agents_allTitle: string;
   agents_zoneTag: string;
   agents_abroadTag: string;
+  noRoute: string;
+  noRouteAny: string;
 }
 
 export interface SendPageCopy {

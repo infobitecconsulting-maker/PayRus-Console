@@ -95,6 +95,13 @@ export async function listMyPayouts(): Promise<PayoutRow[]> {
   }));
 }
 
+// Open send->receive currency routes (migration 0037); null when the list can't be read (then nothing is filtered out).
+export async function listOpenCorridors(): Promise<{ from: string; to: string }[] | null> {
+  const res = await supabase.rpc("list_open_corridors");
+  if (res.error) return null;
+  return ((res.data ?? []) as Record<string, unknown>[]).map((r) => ({ from: r.from_currency as string, to: r.to_currency as string }));
+}
+
 export async function getCorridorQuote(from: string, to: string, amount: number): Promise<CorridorQuote> {
   const res = await supabase.rpc("remittance_quote", { p_from: from, p_to: to, p_amount: amount });
   if (res.error) throw new Error(res.error.message);
