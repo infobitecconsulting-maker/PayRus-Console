@@ -320,7 +320,10 @@ export function PositionCard({ title, total, pockets, note }: { title: string; t
   );
 }
 
-export function QueueCard({ item }: { item: QueueText & { cls: QueueItem["cls"] } }) {
+export interface QueueAction { run: () => void; disabled?: boolean; title?: string }
+
+// Each button opens the workspace where that case is handled. A role without access sees it disabled, with the reason in its tooltip.
+export function QueueCard({ item, primary, secondary }: { item: QueueText & { cls: QueueItem["cls"] }; primary?: QueueAction; secondary?: QueueAction }) {
   return (
     <div>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: "var(--space-3)" }}>
@@ -329,10 +332,10 @@ export function QueueCard({ item }: { item: QueueText & { cls: QueueItem["cls"] 
       </div>
       <div style={{ fontSize: 13, color: "var(--color-neutral-600)", marginTop: 2, lineHeight: 1.5 }}>{item.note}</div>
       <div style={{ display: "flex", gap: "var(--space-3)", marginTop: "var(--space-3)" }}>
-        <button type="button" className="btn btn-primary">
+        <button type="button" className="btn btn-primary" onClick={primary?.run} disabled={!primary || primary.disabled} title={primary?.disabled ? primary.title : undefined}>
           {item.primary}
         </button>
-        <button type="button" className="btn btn-ghost">
+        <button type="button" className="btn btn-ghost" onClick={secondary?.run} disabled={!secondary || secondary.disabled} title={secondary?.disabled ? secondary.title : undefined}>
           {item.secondary}
         </button>
       </div>

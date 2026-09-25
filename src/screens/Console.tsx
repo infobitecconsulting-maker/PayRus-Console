@@ -117,6 +117,26 @@ export function Console({
   const rows = scoped.filter((r) => activeState === "All" || r.state === activeState);
   const queueItems = data.queue.filter((q) => q.roles.includes(profile));
 
+  // Where each queue case is handled: a tab of this console, or one of its workspaces. Access follows the same rules as the tabs and header buttons.
+  type QueueTarget = { tab: TabKey } | { screen: "admin" | "config" };
+  const QUEUE_TARGETS: Record<number, { primary: QueueTarget; secondary: QueueTarget }> = {
+    0: { primary: { tab: "agents" }, secondary: { tab: "agents" } },
+    1: { primary: { tab: "payouts" }, secondary: { tab: "payouts" } },
+    2: { primary: { tab: "transactions" }, secondary: { tab: "transactions" } },
+    3: { primary: { screen: "admin" }, secondary: { tab: "merchants" } },
+    4: { primary: { screen: "config" }, secondary: { tab: "agents" } },
+    5: { primary: { tab: "mandates" }, secondary: { tab: "mandates" } },
+  };
+  function resolveTarget(tg: QueueTarget): { run: () => void; disabled?: boolean; title?: string } {
+    if ("tab" in tg) {
+      const ix = TAB_KEYS.indexOf(tg.tab);
+      const ok = isAdmin || caps.includes(tg.tab);
+      return { run: () => goTab(ix), disabled: !ok, title: D.locked };
+    }
+    if (tg.screen === "admin") return { run: onOpenAdmin, disabled: !canAdminister, title: D.locked };
+    return { run: onOpenConfig, disabled: !canConfigure, title: D.locked };
+  }
+
   function goTab(i: number) {
     if (!isAdmin && !caps.includes(TAB_KEYS[i])) return;
     setTabIx(i);
@@ -297,9 +317,10 @@ export function Console({
             <div>
               <h4 style={{ margin: "0 0 var(--space-4)" }}>{D.queueTitle}</h4>
               <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4)" }}>
-                {queueItems.map((q) => (
-                  <QueueCard key={q.i} item={{ ...D.queueText[q.i], cls: q.cls }} />
-                ))}
+                {queueItems.map((q) => {
+                  const target = QUEUE_TARGETS[q.i] ?? { primary: { tab: "overview" as const }, secondary: { tab: "overview" as const } };
+                  return <QueueCard key={q.i} item={{ ...D.queueText[q.i], cls: q.cls }} primary={resolveTarget(target.primary)} secondary={resolveTarget(target.secondary)} />;
+                })}
               </div>
             </div>
           )}
