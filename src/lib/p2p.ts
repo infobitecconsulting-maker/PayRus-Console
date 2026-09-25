@@ -69,7 +69,7 @@ export interface ReceiverInput {
 }
 export interface PayoutAgent {
   id: string; name: string; kind: "payrus_direct" | "correspondent"; partner: string | null; country: string; city: string; address: string; phone: string | null;
-  hours: string | null; distanceKm: number | null; matchLevel: "city" | "country" | "nearby"; scope?: "country" | "zone";
+  hours: string | null; distanceKm: number | null; matchLevel: "city" | "country" | "nearby"; scope?: "country" | "zone" | "abroad"; pickupCurrency?: string;
 }
 export interface PayoutReceipt { reference: string; payoutStatus: PayoutRow["status"]; pickupCode: string | null; receiveAmount: number; toCurrency: string; receiverName: string; deliveryMethod: PayoutMethod; agentName: string | null; agentAddress: string | null }
 export interface CorridorQuote { ok: boolean; blockedReason: string | null; fee: number; receiveAmount: number }
@@ -137,7 +137,7 @@ export async function listPickupPoints(a: { country: string; currency: string; l
   if (res.error) throw new Error(res.error.message);
   return ((res.data ?? []) as Record<string, unknown>[]).map((r) => ({
     id: r.id as string, name: r.name as string, kind: r.kind as PayoutAgent["kind"], partner: str(r.partner), country: r.country as string, city: r.city as string, address: r.address as string,
-    phone: str(r.phone), hours: str(r.hours), distanceKm: r.distance_km == null ? null : Number(r.distance_km), matchLevel: "country", scope: r.scope as PayoutAgent["scope"],
+    phone: str(r.phone), hours: str(r.hours), distanceKm: r.distance_km == null ? null : Number(r.distance_km), matchLevel: "country", scope: r.scope as PayoutAgent["scope"], pickupCurrency: str(r.pickup_currency) ?? undefined,
   }));
 }
 

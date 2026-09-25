@@ -278,10 +278,10 @@ export function NewReceiver({ D, locale, setLocale, userId, onBack, onLogoClick,
                       {agents !== null && allAgents === null && <div><button type="button" className="btn btn-ghost" onClick={() => void showAllInCountry()}>{R.agents_showAll}</button></div>}
                       {allAgents && (
                         <div style={{ display: "grid", gap: 6 }}>
-                          <strong style={{ fontSize: 12 }}>{R.agents_allTitle.replace("{currency}", toCurrency)}</strong>
+                          <strong style={{ fontSize: 12 }}>{R.agents_allTitle}</strong>
                           {allAgents.filter((a) => !(agents ?? []).some((x) => x.id === a.id)).map((a) => (
                             <button key={a.id} type="button" aria-pressed={agentId === a.id} className="card elev-sm" style={{ textAlign: "left", cursor: "pointer", gap: 2, outline: agentId === a.id ? "2px solid var(--color-primary, #1D3F6B)" : "none" }} onClick={() => setAgentId(a.id)}>
-                              <strong>{a.name} <span className="text-muted" style={{ fontWeight: 400 }}>· {a.kind === "payrus_direct" ? R.agents_direct : R.agents_correspondent}{a.scope === "zone" ? ` · ${a.country} · ${R.agents_zoneTag}` : ""}</span></strong>
+                              <strong>{a.name} <span className="text-muted" style={{ fontWeight: 400 }}>· {a.kind === "payrus_direct" ? R.agents_direct : R.agents_correspondent}{a.scope === "zone" ? ` · ${a.country} · ${R.agents_zoneTag}` : a.scope === "abroad" ? ` · ${a.country} · ${R.agents_abroadTag.replace("{currency}", a.pickupCurrency ?? "")}` : ""}</span></strong>
                               <span className="text-muted" style={{ fontSize: 12 }}>{a.address}, {a.city}{a.distanceKm != null ? ` · ${R.agents_away.replace("{km}", String(a.distanceKm))}` : ""}</span>
                             </button>
                           ))}

@@ -304,6 +304,7 @@ export interface ReceiverPageCopy {
   agents_showAll: string;
   agents_allTitle: string;
   agents_zoneTag: string;
+  agents_abroadTag: string;
 }
 
 export interface SendPageCopy {
