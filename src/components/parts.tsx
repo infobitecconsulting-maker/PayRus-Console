@@ -35,7 +35,7 @@ export function PayRusLogo({
 }) {
   const img = (
     <img
-      src="/payrus-logo.png"
+      src={`${import.meta.env.BASE_URL}payrus-logo.png`}
       alt={alt}
       className={className}
       style={{ width: size, mixBlendMode: "multiply" }}
