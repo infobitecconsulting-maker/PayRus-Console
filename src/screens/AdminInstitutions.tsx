@@ -9,10 +9,10 @@ import { errorText } from "../lib/adminStaff.ts";
 import { listInstOverview, listSubProfileStats, type InstOverviewRow, type SubProfileStat } from "../lib/institutions.ts";
 
 const COPY: Record<Locale, Record<string, string>> = {
-  en: { title: "Institutional modules", intro: "Adoption and money flow across specialised profiles. Read-only: customers act on their own records; approvals need a second authorised person.", adoption: "Profile specialisations", holders: "accounts", kind: "Record type", owners: "Customers", records: "Records", total: "Total value", open: "Open value", settled: "Settled", approval: "Awaiting approval", stuck: "Approved, unsettled > 7d", loading: "Loading…", empty: "No data yet — apply migrations 0053 and 0054.", denied: "Staff access required.", backlog: "Four-eyes backlog", stuckTotal: "Stuck items" },
-  fr: { title: "Modules institutionnels", intro: "Adoption et flux d’argent par profil spécialisé. Lecture seule : les clients agissent sur leurs propres enregistrements ; les approbations exigent une seconde personne autorisée.", adoption: "Spécialisations de profil", holders: "comptes", kind: "Type", owners: "Clients", records: "Enregistrements", total: "Valeur totale", open: "Valeur ouverte", settled: "Réglé", approval: "En attente d’approbation", stuck: "Approuvé, non réglé > 7 j", loading: "Chargement…", empty: "Pas encore de données — appliquez les migrations 0053 et 0054.", denied: "Accès personnel requis.", backlog: "File de double validation", stuckTotal: "Éléments bloqués" },
-  pt: { title: "Módulos institucionais", intro: "Adoção e fluxo de dinheiro por perfil especializado. Só leitura: os clientes atuam nos seus próprios registos; as aprovações exigem uma segunda pessoa autorizada.", adoption: "Especializações de perfil", holders: "contas", kind: "Tipo", owners: "Clientes", records: "Registos", total: "Valor total", open: "Valor em aberto", settled: "Liquidado", approval: "Aguarda aprovação", stuck: "Aprovado, não liquidado > 7 d", loading: "A carregar…", empty: "Sem dados — aplique as migrações 0053 e 0054.", denied: "Acesso de equipa necessário.", backlog: "Fila de dupla validação", stuckTotal: "Itens parados" },
-  es: { title: "Módulos institucionales", intro: "Adopción y flujo de dinero por perfil especializado. Solo lectura: los clientes actúan sobre sus propios registros; las aprobaciones requieren una segunda persona autorizada.", adoption: "Especializaciones de perfil", holders: "cuentas", kind: "Tipo", owners: "Clientes", records: "Registros", total: "Valor total", open: "Valor abierto", settled: "Liquidado", approval: "Pendiente de aprobación", stuck: "Aprobado, sin liquidar > 7 d", loading: "Cargando…", empty: "Sin datos — aplique las migraciones 0053 y 0054.", denied: "Se requiere acceso de personal.", backlog: "Cola de doble validación", stuckTotal: "Elementos bloqueados" },
+  en: { title: "Institutional modules", intro: "Adoption and money flow across specialised profiles. Read-only: customers act on their own records; approvals need a second authorised person.", adoption: "Profile specialisations", holders: "accounts", kind: "Record type", owners: "Customers", records: "Records", total: "Total value", open: "Open value", settled: "Settled", approval: "Awaiting approval", stuck: "Approved, unsettled > 7d", loading: "Loading…", empty: "No records yet — customers create them in the App's Business modules.", denied: "Staff access required.", backlog: "Four-eyes backlog", stuckTotal: "Stuck items" },
+  fr: { title: "Modules institutionnels", intro: "Adoption et flux d’argent par profil spécialisé. Lecture seule : les clients agissent sur leurs propres enregistrements ; les approbations exigent une seconde personne autorisée.", adoption: "Spécialisations de profil", holders: "comptes", kind: "Type", owners: "Clients", records: "Enregistrements", total: "Valeur totale", open: "Valeur ouverte", settled: "Réglé", approval: "En attente d’approbation", stuck: "Approuvé, non réglé > 7 j", loading: "Chargement…", empty: "Aucun enregistrement — les clients les créent dans les Modules métier de l'App.", denied: "Accès personnel requis.", backlog: "File de double validation", stuckTotal: "Éléments bloqués" },
+  pt: { title: "Módulos institucionais", intro: "Adoção e fluxo de dinheiro por perfil especializado. Só leitura: os clientes atuam nos seus próprios registos; as aprovações exigem uma segunda pessoa autorizada.", adoption: "Especializações de perfil", holders: "contas", kind: "Tipo", owners: "Clientes", records: "Registos", total: "Valor total", open: "Valor em aberto", settled: "Liquidado", approval: "Aguarda aprovação", stuck: "Aprovado, não liquidado > 7 d", loading: "A carregar…", empty: "Ainda sem registos — os clientes criam-nos nos Módulos de negócio da App.", denied: "Acesso de equipa necessário.", backlog: "Fila de dupla validação", stuckTotal: "Itens parados" },
+  es: { title: "Módulos institucionales", intro: "Adopción y flujo de dinero por perfil especializado. Solo lectura: los clientes actúan sobre sus propios registros; las aprobaciones requieren una segunda persona autorizada.", adoption: "Especializaciones de perfil", holders: "cuentas", kind: "Tipo", owners: "Clientes", records: "Registros", total: "Valor total", open: "Valor abierto", settled: "Liquidado", approval: "Pendiente de aprobación", stuck: "Aprobado, sin liquidar > 7 d", loading: "Cargando…", empty: "Aún sin registros — los clientes los crean en los Módulos de negocio de la App.", denied: "Se requiere acceso de personal.", backlog: "Cola de doble validación", stuckTotal: "Elementos bloqueados" },
 };
 
 export function InstitutionsTab({ locale }: { locale: Locale }) {
@@ -51,7 +51,7 @@ export function InstitutionsTab({ locale }: { locale: Locale }) {
         </div>
       </div>
 
-      {rows && rows.length > 0 && !error && (
+      {rows && active.length > 0 && !error && (
         <div className="card elev-sm" style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
@@ -72,7 +72,7 @@ export function InstitutionsTab({ locale }: { locale: Locale }) {
           </table>
         </div>
       )}
-      {rows && rows.length === 0 && !error && <div className="text-muted">{C.empty}</div>}
+      {rows && active.length === 0 && !error && <div className="text-muted">{C.empty}</div>}
     </div>
   );
 }
