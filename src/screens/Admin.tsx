@@ -10,10 +10,13 @@ import {
 import { AccessTab, AddProfile, AuditTab, GatePassword } from "./AdminExtras.tsx";
 import { EscalationsTab } from "./AdminEscalations.tsx";
 import { RemittanceTab } from "./AdminRemittance.tsx";
+import { InstitutionsTab } from "./AdminInstitutions.tsx";
 
 const REMITTANCE_TAB: Record<Locale, string> = { en: "Remittances", fr: "Transferts", pt: "Remessas", es: "Remesas" };
 
-type TabId = "users" | "transactions" | "remittance" | "escalations" | "staff" | "access" | "audit";
+type TabId = "users" | "transactions" | "remittance" | "escalations" | "staff" | "access" | "audit" | "institutions";
+
+const INSTITUTIONS_TAB: Record<Locale, string> = { en: "Institutions", fr: "Institutions", pt: "Instituições", es: "Instituciones" };
 
 const COMPLETABLE = ["pending", "failed", "submitted", "confirming", "partner_accepted"];
 const REFUNDABLE = ["disputed", "refund_pending", "reversed"];
@@ -165,7 +168,7 @@ export function Admin({ D, locale, setLocale, onBack, onLogoClick }: {
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: "var(--space-4)" }}>
           {tabBtn("users", A.tabUsers)}{tabBtn("transactions", A.tabTransactions)}{tabBtn("remittance", REMITTANCE_TAB[locale] ?? REMITTANCE_TAB.en)}{tabBtn("escalations", A.tabEscalations)}{tabBtn("staff", A.tabStaff)}
-          {perms?.isAdmin && tabBtn("access", A.tabAccess)}{perms?.isAdmin && tabBtn("audit", A.tabAudit)}
+          {perms?.isAdmin && tabBtn("institutions", INSTITUTIONS_TAB[locale] ?? INSTITUTIONS_TAB.en)}{perms?.isAdmin && tabBtn("access", A.tabAccess)}{perms?.isAdmin && tabBtn("audit", A.tabAudit)}
         </div>
 
         {message && <div className="tag tag-neutral" role="status" style={{ marginBottom: "var(--space-3)" }}>{message}</div>}
@@ -295,6 +298,7 @@ export function Admin({ D, locale, setLocale, onBack, onLogoClick }: {
 
         {tab === "access" && perms?.isAdmin && <AccessTab A={A} users={users ?? []} notify={setMessage} reload={reload} />}
         {tab === "audit" && perms?.isAdmin && <AuditTab A={A} />}
+        {tab === "institutions" && perms?.isAdmin && <InstitutionsTab locale={locale} />}
 
         {tab === "staff" && (
           <div style={{ display: "grid", gap: "var(--space-4)" }}>
