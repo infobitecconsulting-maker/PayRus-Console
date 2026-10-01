@@ -6,13 +6,13 @@
 import { useEffect, useState } from "react";
 import type { Locale } from "../types.ts";
 import { errorText } from "../lib/adminStaff.ts";
-import { listInstOverview, listSubProfileStats, type InstOverviewRow, type SubProfileStat } from "../lib/institutions.ts";
+import { getInstHealth, listInstOverview, listSubProfileStats, type InstHealth, type InstOverviewRow, type SubProfileStat } from "../lib/institutions.ts";
 
 const COPY: Record<Locale, Record<string, string>> = {
-  en: { title: "Institutional modules", intro: "Adoption and money flow across specialised profiles. Read-only: customers act on their own records; approvals need a second authorised person.", adoption: "Profile specialisations", holders: "accounts", kind: "Record type", owners: "Customers", records: "Records", total: "Total value", open: "Open value", settled: "Settled", approval: "Awaiting approval", stuck: "Approved, unsettled > 7d", loading: "Loading…", empty: "No records yet — customers create them in the App's Business modules.", denied: "Staff access required.", backlog: "Four-eyes backlog", stuckTotal: "Stuck items" },
-  fr: { title: "Modules institutionnels", intro: "Adoption et flux d’argent par profil spécialisé. Lecture seule : les clients agissent sur leurs propres enregistrements ; les approbations exigent une seconde personne autorisée.", adoption: "Spécialisations de profil", holders: "comptes", kind: "Type", owners: "Clients", records: "Enregistrements", total: "Valeur totale", open: "Valeur ouverte", settled: "Réglé", approval: "En attente d’approbation", stuck: "Approuvé, non réglé > 7 j", loading: "Chargement…", empty: "Aucun enregistrement — les clients les créent dans les Modules métier de l'App.", denied: "Accès personnel requis.", backlog: "File de double validation", stuckTotal: "Éléments bloqués" },
-  pt: { title: "Módulos institucionais", intro: "Adoção e fluxo de dinheiro por perfil especializado. Só leitura: os clientes atuam nos seus próprios registos; as aprovações exigem uma segunda pessoa autorizada.", adoption: "Especializações de perfil", holders: "contas", kind: "Tipo", owners: "Clientes", records: "Registos", total: "Valor total", open: "Valor em aberto", settled: "Liquidado", approval: "Aguarda aprovação", stuck: "Aprovado, não liquidado > 7 d", loading: "A carregar…", empty: "Ainda sem registos — os clientes criam-nos nos Módulos de negócio da App.", denied: "Acesso de equipa necessário.", backlog: "Fila de dupla validação", stuckTotal: "Itens parados" },
-  es: { title: "Módulos institucionales", intro: "Adopción y flujo de dinero por perfil especializado. Solo lectura: los clientes actúan sobre sus propios registros; las aprobaciones requieren una segunda persona autorizada.", adoption: "Especializaciones de perfil", holders: "cuentas", kind: "Tipo", owners: "Clientes", records: "Registros", total: "Valor total", open: "Valor abierto", settled: "Liquidado", approval: "Pendiente de aprobación", stuck: "Aprobado, sin liquidar > 7 d", loading: "Cargando…", empty: "Aún sin registros — los clientes los crean en los Módulos de negocio de la App.", denied: "Se requiere acceso de personal.", backlog: "Cola de doble validación", stuckTotal: "Elementos bloqueados" },
+  en: { title: "Institutional modules", intro: "Adoption and money flow across specialised profiles. Read-only: customers act on their own records; approvals need a second authorised person.", adoption: "Profile specialisations", holders: "accounts", kind: "Record type", owners: "Customers", records: "Records", total: "Total value", open: "Open value", settled: "Settled", approval: "Awaiting approval", stuck: "Approved, unsettled > 7d", loading: "Loading…", empty: "No records yet — customers create them in the App's Business modules.", denied: "Staff access required.", backlog: "Four-eyes backlog", stuckTotal: "Stuck items", health: "Finance controls", unmatched: "Unreconciled bank lines", matchedLines: "Reconciled lines", overdue: "Overdue receivables", budgetsAlert: "Budgets at alert", budgetsOver: "Budgets exceeded", chains: "Multi-approver policies", limits: "Approver limits" },
+  fr: { title: "Modules institutionnels", intro: "Adoption et flux d’argent par profil spécialisé. Lecture seule : les clients agissent sur leurs propres enregistrements ; les approbations exigent une seconde personne autorisée.", adoption: "Spécialisations de profil", holders: "comptes", kind: "Type", owners: "Clients", records: "Enregistrements", total: "Valeur totale", open: "Valeur ouverte", settled: "Réglé", approval: "En attente d’approbation", stuck: "Approuvé, non réglé > 7 j", loading: "Chargement…", empty: "Aucun enregistrement — les clients les créent dans les Modules métier de l'App.", denied: "Accès personnel requis.", backlog: "File de double validation", stuckTotal: "Éléments bloqués", health: "Contrôles financiers", unmatched: "Lignes bancaires non rapprochées", matchedLines: "Lignes rapprochées", overdue: "Créances en retard", budgetsAlert: "Budgets en alerte", budgetsOver: "Budgets dépassés", chains: "Politiques multi-approbateurs", limits: "Plafonds d’approbation" },
+  pt: { title: "Módulos institucionais", intro: "Adoção e fluxo de dinheiro por perfil especializado. Só leitura: os clientes atuam nos seus próprios registos; as aprovações exigem uma segunda pessoa autorizada.", adoption: "Especializações de perfil", holders: "contas", kind: "Tipo", owners: "Clientes", records: "Registos", total: "Valor total", open: "Valor em aberto", settled: "Liquidado", approval: "Aguarda aprovação", stuck: "Aprovado, não liquidado > 7 d", loading: "A carregar…", empty: "Ainda sem registos — os clientes criam-nos nos Módulos de negócio da App.", denied: "Acesso de equipa necessário.", backlog: "Fila de dupla validação", stuckTotal: "Itens parados", health: "Controlos financeiros", unmatched: "Linhas bancárias por conciliar", matchedLines: "Linhas conciliadas", overdue: "Recebíveis em atraso", budgetsAlert: "Orçamentos em alerta", budgetsOver: "Orçamentos excedidos", chains: "Políticas multi-aprovador", limits: "Limites de aprovação" },
+  es: { title: "Módulos institucionales", intro: "Adopción y flujo de dinero por perfil especializado. Solo lectura: los clientes actúan sobre sus propios registros; las aprobaciones requieren una segunda persona autorizada.", adoption: "Especializaciones de perfil", holders: "cuentas", kind: "Tipo", owners: "Clientes", records: "Registros", total: "Valor total", open: "Valor abierto", settled: "Liquidado", approval: "Pendiente de aprobación", stuck: "Aprobado, sin liquidar > 7 d", loading: "Cargando…", empty: "Aún sin registros — los clientes los crean en los Módulos de negocio de la App.", denied: "Se requiere acceso de personal.", backlog: "Cola de doble validación", stuckTotal: "Elementos bloqueados", health: "Controles financieros", unmatched: "Líneas bancarias sin conciliar", matchedLines: "Líneas conciliadas", overdue: "Cuentas por cobrar vencidas", budgetsAlert: "Presupuestos en alerta", budgetsOver: "Presupuestos superados", chains: "Políticas multiaprobador", limits: "Límites de aprobación" },
 };
 
 export function InstitutionsTab({ locale }: { locale: Locale }) {
@@ -20,10 +20,12 @@ export function InstitutionsTab({ locale }: { locale: Locale }) {
   const [rows, setRows] = useState<InstOverviewRow[] | null>(null);
   const [subs, setSubs] = useState<SubProfileStat[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [health, setHealth] = useState<InstHealth | null>(null);
 
   useEffect(() => {
     void listInstOverview().then(setRows).catch((e) => { setRows([]); setError(errorText(e, C.denied)); });
     void listSubProfileStats().then(setSubs).catch(() => setSubs([]));
+    void getInstHealth().then(setHealth).catch(() => setHealth(null));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -43,6 +45,18 @@ export function InstitutionsTab({ locale }: { locale: Locale }) {
         <div className="card elev-sm"><div className="text-muted" style={{ fontSize: 12 }}>{C.stuckTotal}</div><strong style={{ fontSize: 24 }}>{stuck}</strong></div>
         <div className="card elev-sm"><div className="text-muted" style={{ fontSize: 12 }}>{C.records}</div><strong style={{ fontSize: 24 }}>{num(active.reduce((s, r) => s + r.records, 0))}</strong></div>
       </div>
+
+      {health && (
+        <div className="card elev-sm" style={{ gap: 8 }}>
+          <strong>{C.health}</strong>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 10 }}>
+            {([[C.unmatched, health.unmatchedLines, health.unmatchedLines > 0], [C.matchedLines, health.matchedLines, false], [C.overdue, `${health.overdueInvoices} · ${num(health.overdueAmount)}`, health.overdueInvoices > 0],
+              [C.budgetsAlert, health.budgetsWarning, health.budgetsWarning > 0], [C.budgetsOver, health.budgetsOver, health.budgetsOver > 0], [C.chains, health.chainPolicies, false], [C.limits, health.approvalLimits, false]] as [string, number | string, boolean][]).map(([label, value, warn]) => (
+              <div key={label}><div className="text-muted" style={{ fontSize: 12 }}>{label}</div><strong style={{ fontSize: 20 }} className={warn ? "tag tag-warning" : undefined}>{value}</strong></div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="card elev-sm" style={{ gap: 8 }}>
         <strong>{C.adoption}</strong>

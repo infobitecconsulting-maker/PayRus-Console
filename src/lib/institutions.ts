@@ -25,3 +25,18 @@ export async function listSubProfileStats(): Promise<SubProfileStat[]> {
   if (res.error) throw new Error(res.error.message);
   return ((res.data ?? []) as Record<string, unknown>[]).map((r) => ({ subProfile: r.sub_profile as string, label: r.label as string, holders: n(r.holders) }));
 }
+
+export interface InstHealth {
+  unmatchedLines: number; matchedLines: number; overdueInvoices: number; overdueAmount: number;
+  budgetsWarning: number; budgetsOver: number; chainPolicies: number; approvalLimits: number;
+}
+
+export async function getInstHealth(): Promise<InstHealth> {
+  const res = await supabase.rpc("admin_inst_health");
+  if (res.error) throw new Error(res.error.message);
+  const r = ((res.data ?? [])[0] ?? {}) as Record<string, unknown>;
+  return {
+    unmatchedLines: n(r.unmatched_lines), matchedLines: n(r.matched_lines), overdueInvoices: n(r.overdue_invoices), overdueAmount: n(r.overdue_amount),
+    budgetsWarning: n(r.budgets_warning), budgetsOver: n(r.budgets_over), chainPolicies: n(r.chain_policies), approvalLimits: n(r.approval_limits),
+  };
+}
